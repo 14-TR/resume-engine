@@ -1,0 +1,25 @@
+# Resume Engine Roadmap
+
+**Vision:** The best open-source CLI for AI-powered resume tailoring. One command, perfect resume.
+
+**Goal:** Public adoption — useful to any job seeker.
+
+## Priority Queue
+
+1. Add example master resume + job posting in examples/ directory
+2. PDF output via weasyprint or pandoc (--format pdf)
+3. ATS keyword analysis — show match score before/after tailoring
+4. Interactive mode — ask user questions to fill gaps
+5. Template system — different resume styles/layouts
+6. Batch mode — tailor to multiple jobs at once
+7. LinkedIn profile import as master resume source
+8. PyPI publish — `pip install resume-engine`
+9. GitHub Actions CI (tests + lint)
+10. Documentation site with tutorials
+
+## Constraints
+- Python 3.9+, minimal dependencies
+- Local-first (Ollama default, no API key required for basic usage)
+- No em dashes in output
+- Public repo (14-TR/resume-engine)
+- MIT license
