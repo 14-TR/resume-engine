@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "resume-engine"
+version = "0.1.0"
+description = "CLI tool to tailor resumes to job postings using AI"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "TR Ingram", email = "tr@ingramgeoai.com"}
+]
+keywords = ["resume", "job-search", "ai", "cli", "tailoring"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "click>=8.0",
+    "httpx>=0.24",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+pdf = ["weasyprint>=60.0"]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+resume-engine = "src.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/14-TR/resume-engine"
+Repository = "https://github.com/14-TR/resume-engine"
+"Bug Tracker" = "https://github.com/14-TR/resume-engine/issues"
