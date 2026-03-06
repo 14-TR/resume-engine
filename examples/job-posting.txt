@@ -1,0 +1,44 @@
+Senior Python Engineer - Platform Team
+Meridian Cloud | Remote (US)
+Posted: March 2026
+
+About Meridian Cloud
+
+Meridian Cloud builds infrastructure tooling for mid-market SaaS companies. Our platform handles billing, usage metering, and tenant provisioning for 300+ customers. We move fast, write tests, and care deeply about developer experience.
+
+About the Role
+
+We are looking for a Senior Python Engineer to join our Platform team. You will work on the backend systems that power Meridian Cloud's core infrastructure -- billing pipelines, tenant lifecycle management, internal APIs, and developer tooling. This role requires strong Python skills, a systems thinking mindset, and experience operating services at scale.
+
+Responsibilities
+
+- Design and implement backend services in Python (FastAPI preferred)
+- Own and improve our billing and usage-metering pipeline (currently processing 2M+ events/day)
+- Collaborate with the infra team on AWS architecture and cost optimization
+- Write clear technical documentation and participate in design reviews
+- Mentor junior engineers and contribute to engineering standards
+- Debug production incidents and drive postmortems
+
+Requirements
+
+- 5+ years of professional Python experience
+- Strong fundamentals in distributed systems, APIs, and data pipelines
+- Experience with AWS (Lambda, SQS, RDS, or equivalent)
+- Comfortable working in a fully remote, async-first environment
+- Clear written communication -- we write a lot of docs and RFCs
+
+Nice to Have
+
+- Experience with billing systems or financial data
+- Familiarity with Kafka, Airflow, or similar event-streaming / workflow tools
+- Open source contributions
+- Kubernetes experience
+
+Compensation
+
+$155,000 - $185,000 base salary + equity + benefits
+Remote - US only
+
+How to Apply
+
+Send your resume to careers@meridiancloud.io with the subject line "Senior Python Engineer - Platform"
