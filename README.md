@@ -62,6 +62,28 @@ Your full professional summary...
 Description...
 ```
 
+
+## PDF Output
+
+Add `--format pdf` to any command to generate a PDF alongside the markdown:
+
+```bash
+resume-engine tailor --master resume.md --job posting.txt --output tailored.md --format pdf
+resume-engine cover --master resume.md --job posting.txt --format pdf
+resume-engine package --master resume.md --job posting.txt --outdir ./application/ --format pdf
+```
+
+PDF conversion requires **pandoc** and a LaTeX engine:
+
+```bash
+# macOS
+brew install pandoc basictex
+sudo tlmgr install titlesec enumitem parskip
+
+# Linux (Debian/Ubuntu)
+sudo apt install pandoc texlive-latex-extra
+```
+
 ## LLM Support
 
 Uses local Ollama (qwen2.5:14b) by default. Falls back to OpenAI or Anthropic if configured.

@@ -27,7 +27,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-pdf = ["weasyprint>=60.0"]
 dev = ["pytest>=7.0"]
 
 [project.scripts]
