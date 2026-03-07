@@ -158,5 +158,93 @@ def package(master, job, job_url, outdir, model, fmt):
 
     console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
+
+@main.command()
+@click.option("--resume", required=True, help="Path to resume (markdown) to analyze")
+@click.option("--job", default=None, help="Path to job posting text file")
+@click.option("--job-url", default=None, help="URL of job posting to scrape")
+@click.option("--tailored", default=None, help="Path to tailored resume for before/after comparison")
+@click.option("--top", default=30, show_default=True, help="Number of keywords to analyze")
+def ats(resume, job, job_url, tailored, top):
+    """Analyze ATS keyword match score between resume and job posting."""
+    from .ats import analyze
+    from rich.table import Table
+    from rich.columns import Columns
+
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
+    console.print(Panel("[bold]resume-engine[/bold] — ATS keyword analysis", style="blue"))
+
+    with open(resume) as f:
+        resume_text = f.read()
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+        job_text = scrape_job_posting(job_url)
+
+    # Analyze original resume
+    result = analyze(resume_text, job_text, top_n=top)
+    score = result["score"]
+
+    # Score color
+    if score >= 70:
+        score_style = "bold green"
+    elif score >= 45:
+        score_style = "bold yellow"
+    else:
+        score_style = "bold red"
+
+    console.print(f"\n[bold]Original resume match score:[/bold] [{score_style}]{score}%[/{score_style}] ({result['matched_count']}/{result['total_keywords']} keywords)")
+
+    # Show matched keywords
+    if result["matched"]:
+        matched_str = "  ".join(f"[green]{k}[/green]" for k in result["matched"])
+        console.print(f"\n[bold]Matched keywords:[/bold]")
+        console.print(f"  {matched_str}")
+
+    # Show missing keywords
+    if result["missing"]:
+        missing_str = "  ".join(f"[red]{k}[/red]" for k in result["missing"])
+        console.print(f"\n[bold]Missing keywords:[/bold]")
+        console.print(f"  {missing_str}")
+
+    # Before/after comparison if tailored resume provided
+    if tailored:
+        with open(tailored) as f:
+            tailored_text = f.read()
+
+        tailored_result = analyze(tailored_text, job_text, top_n=top)
+        tailored_score = tailored_result["score"]
+
+        if tailored_score >= 70:
+            t_style = "bold green"
+        elif tailored_score >= 45:
+            t_style = "bold yellow"
+        else:
+            t_style = "bold red"
+
+        delta = tailored_score - score
+        delta_str = f"+{delta}%" if delta >= 0 else f"{delta}%"
+        delta_style = "green" if delta > 0 else ("red" if delta < 0 else "dim")
+
+        console.print(f"\n[bold]Tailored resume match score:[/bold] [{t_style}]{tailored_score}%[/{t_style}] ({tailored_result['matched_count']}/{tailored_result['total_keywords']} keywords)  [{delta_style}]{delta_str}[/{delta_style}]")
+
+        # Show newly matched keywords
+        newly_matched = [k for k in tailored_result["matched"] if k in result["missing"]]
+        if newly_matched:
+            console.print(f"\n[bold]Newly matched by tailoring:[/bold]")
+            console.print("  " + "  ".join(f"[green]{k}[/green]" for k in newly_matched))
+
+        still_missing = [k for k in tailored_result["missing"]]
+        if still_missing:
+            console.print(f"\n[bold]Still missing:[/bold]")
+            console.print("  " + "  ".join(f"[red]{k}[/red]" for k in still_missing))
+
+    console.print("")
+
 if __name__ == "__main__":
     main()
