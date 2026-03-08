@@ -18,7 +18,8 @@ def main():
 @click.option("--output", default="tailored-resume.md", help="Output file path")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-def tailor(master, job, job_url, output, model, fmt):
+@click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before tailoring")
+def tailor(master, job, job_url, output, model, fmt, interactive):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
     
@@ -42,6 +43,17 @@ def tailor(master, job, job_url, output, model, fmt):
     
     console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
     
+    # Interactive gap-filling
+    if interactive:
+        from .interactive import analyze_gaps, ask_questions, enrich_master
+        console.print("[dim]Analyzing resume gaps...[/dim]")
+        questions = analyze_gaps(master_text, job_text, model=model)
+        if questions:
+            answers = ask_questions(questions, console)
+            master_text = enrich_master(master_text, answers)
+        else:
+            console.print("[dim]No gaps identified -- proceeding with tailoring.[/dim]")
+
     # Tailor
     result = tailor_resume(master_text, job_text, model=model)
     
@@ -70,7 +82,8 @@ def tailor(master, job, job_url, output, model, fmt):
 @click.option("--output", default="cover-letter.md", help="Output file path")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-def cover(master, job, job_url, output, model, fmt):
+@click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before writing")
+def cover(master, job, job_url, output, model, fmt, interactive):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
     
@@ -89,6 +102,17 @@ def cover(master, job, job_url, output, model, fmt):
         from .scraper import scrape_job_posting
         job_text = scrape_job_posting(job_url)
     
+    # Interactive gap-filling
+    if interactive:
+        from .interactive import analyze_gaps, ask_questions, enrich_master
+        console.print("[dim]Analyzing resume gaps...[/dim]")
+        questions = analyze_gaps(master_text, job_text, model=model)
+        if questions:
+            answers = ask_questions(questions, console)
+            master_text = enrich_master(master_text, answers)
+        else:
+            console.print("[dim]No gaps identified -- proceeding.[/dim]")
+
     result = generate_cover_letter(master_text, job_text, model=model)
     
     with open(output, "w") as f:
