@@ -84,6 +84,46 @@ sudo tlmgr install titlesec enumitem parskip
 sudo apt install pandoc texlive-latex-extra
 ```
 
+
+## Templates
+
+Choose from four built-in layout styles with `--template`:
+
+```bash
+# List available templates
+resume-engine templates list
+
+# Show a template's layout instructions
+resume-engine templates show technical
+
+# Tailor using the technical template (skills-first layout)
+resume-engine tailor --master resume.md --job posting.txt --template technical
+
+# Use executive style for the full application package
+resume-engine package --master resume.md --job posting.txt --template executive
+```
+
+| Slug | Name | Best for |
+|------|------|----------|
+| `classic` | Classic | Most roles - traditional chronological format |
+| `concise` | Concise | Experienced candidates - tight single-page layout |
+| `technical` | Technical | Engineers - skills-first, project emphasis |
+| `executive` | Executive | Directors/VPs - leadership and business impact focus |
+
+### Custom Templates
+
+Drop any `.md` file in `~/.resume-engine/templates/` to add your own. Use front matter for metadata:
+
+```markdown
+---
+name: My Style
+description: My custom layout
+---
+
+LAYOUT INSTRUCTIONS:
+- ...your instructions...
+```
+
 ## LLM Support
 
 Uses local Ollama (qwen2.5:14b) by default. Falls back to OpenAI or Anthropic if configured.

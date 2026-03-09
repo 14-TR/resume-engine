@@ -19,7 +19,8 @@ def main():
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
 @click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before tailoring")
-def tailor(master, job, job_url, output, model, fmt, interactive):
+@click.option("--template", default=None, help="Resume template/style (run `templates list` to see options)")
+def tailor(master, job, job_url, output, model, fmt, interactive, template):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
     
@@ -55,7 +56,7 @@ def tailor(master, job, job_url, output, model, fmt, interactive):
             console.print("[dim]No gaps identified -- proceeding with tailoring.[/dim]")
 
     # Tailor
-    result = tailor_resume(master_text, job_text, model=model)
+    result = tailor_resume(master_text, job_text, model=model, template=template)
     
     # Output
     # Determine final paths
@@ -83,7 +84,8 @@ def tailor(master, job, job_url, output, model, fmt, interactive):
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
 @click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before writing")
-def cover(master, job, job_url, output, model, fmt, interactive):
+@click.option("--template", default=None, help="Cover letter template/style (run `templates list` to see options)")
+def cover(master, job, job_url, output, model, fmt, interactive, template):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
     
@@ -113,7 +115,7 @@ def cover(master, job, job_url, output, model, fmt, interactive):
         else:
             console.print("[dim]No gaps identified -- proceeding.[/dim]")
 
-    result = generate_cover_letter(master_text, job_text, model=model)
+    result = generate_cover_letter(master_text, job_text, model=model, template=template)
     
     with open(output, "w") as f:
         f.write(result)
@@ -136,7 +138,8 @@ def cover(master, job, job_url, output, model, fmt, interactive):
 @click.option("--outdir", default="./application", help="Output directory")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-def package(master, job, job_url, outdir, model, fmt):
+@click.option("--template", default=None, help="Resume/cover letter template/style (run `templates list` to see options)")
+def package(master, job, job_url, outdir, model, fmt, template):
     """Generate full application package (resume + cover letter)."""
     import os
     os.makedirs(outdir, exist_ok=True)
@@ -158,13 +161,13 @@ def package(master, job, job_url, outdir, model, fmt):
     
     from .engine import tailor_resume, generate_cover_letter
     
-    resume = tailor_resume(master_text, job_text, model=model)
+    resume = tailor_resume(master_text, job_text, model=model, template=template)
     resume_md = os.path.join(outdir, "resume.md")
     with open(resume_md, "w") as f:
         f.write(resume)
     console.print("[green]Resume (markdown) written[/green]")
 
-    letter = generate_cover_letter(master_text, job_text, model=model)
+    letter = generate_cover_letter(master_text, job_text, model=model, template=template)
     cover_md = os.path.join(outdir, "cover-letter.md")
     with open(cover_md, "w") as f:
         f.write(letter)
@@ -269,6 +272,53 @@ def ats(resume, job, job_url, tailored, top):
             console.print("  " + "  ".join(f"[red]{k}[/red]" for k in still_missing))
 
     console.print("")
+
+
+@main.group()
+def templates():
+    """Manage and list resume templates."""
+    pass
+
+
+@templates.command("list")
+def templates_list():
+    """List all available resume templates."""
+    from .templates import list_templates
+    from rich.table import Table
+
+    tmpl_list = list_templates()
+
+    table = Table(title="Available Templates", show_header=True, header_style="bold cyan")
+    table.add_column("Name", style="bold", width=14)
+    table.add_column("Slug", style="dim", width=12)
+    table.add_column("Description")
+    table.add_column("Source", width=10)
+
+    for t in tmpl_list:
+        source_style = "[dim]user[/dim]" if t["source"] == "user" else "[green]built-in[/green]"
+        table.add_row(t["name"], t["slug"], t["description"], source_style)
+
+    console.print(table)
+    console.print(
+        "\n[dim]Use with:[/dim] python -m src.cli tailor --template technical --master resume.md --job job.txt",
+    )
+
+
+@templates.command("show")
+@click.argument("name")
+def templates_show(name):
+    """Show the formatting instructions for a template."""
+    from .templates import get_template, get_template_instructions
+    t = get_template(name)
+    if t is None:
+        from .templates import template_choices
+        available = ", ".join(template_choices()[1:])  # skip "default"
+        console.print(f"[red]Unknown template '{name}'. Available: {available}[/red]")
+        raise SystemExit(1)
+    console.print(f"\n[bold cyan]{t['name']}[/bold cyan] ({t['slug']}) - {t['description']}\n")
+    console.print(get_template_instructions(t['slug']))
+    console.print("")
+
 
 if __name__ == "__main__":
     main()
