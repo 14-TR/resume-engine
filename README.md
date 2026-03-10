@@ -63,6 +63,55 @@ Description...
 ```
 
 
+## Batch Mode
+
+Tailor your resume to multiple jobs in one command.
+
+### From a directory
+
+```bash
+# Put all your job postings (.txt or .md) in a folder, then:
+resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./applications/
+
+# With cover letters too
+resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./applications/ --with-cover
+
+# With PDF output
+resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./applications/ --format pdf --with-cover
+```
+
+Each job gets its own subfolder:
+
+```
+applications/
+  acme-corp/
+    resume.md
+    cover-letter.md   (if --with-cover)
+    resume.pdf        (if --format pdf)
+  startup-x/
+    resume.md
+    ...
+```
+
+### From a JSON manifest
+
+For more control, use a manifest file:
+
+```json
+[
+  {"name": "acme-corp",   "job": "jobs/acme.txt"},
+  {"name": "startup-x",   "job_url": "https://careers.startup.io/123"},
+  {"name": "big-tech-co", "job": "jobs/bigtech.txt"}
+]
+```
+
+```bash
+resume-engine batch --master resume.md --manifest batch-manifest.json --outdir ./applications/
+```
+
+See `examples/batch-manifest.json` for a working example.
+
+
 ## PDF Output
 
 Add `--format pdf` to any command to generate a PDF alongside the markdown:

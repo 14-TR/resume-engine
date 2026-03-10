@@ -274,6 +274,77 @@ def ats(resume, job, job_url, tailored, top):
     console.print("")
 
 
+
+@main.command()
+@click.option("--master", required=True, help="Path to master resume (markdown)")
+@click.option("--jobs-dir", default=None, help="Directory of job posting files (.txt or .md)")
+@click.option("--manifest", default=None, help="JSON manifest file listing jobs (see docs for format)")
+@click.option("--outdir", default="./batch-output", show_default=True, help="Root output directory")
+@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
+@click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
+@click.option("--template", default=None, help="Resume template/style (run `templates list` to see options)")
+@click.option("--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job")
+def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
+    """Tailor resume to multiple jobs at once.
+
+    Jobs can be supplied as a directory of .txt/.md files (--jobs-dir)
+    or as a JSON manifest (--manifest).
+
+    Manifest format example:
+
+    \b
+      [
+        {"name": "acme-corp",  "job": "jobs/acme.txt"},
+        {"name": "startup-x",  "job_url": "https://example.com/jobs/123"}
+      ]
+
+    Each job gets its own subfolder in --outdir containing resume.md
+    (and cover-letter.md if --with-cover).
+    """
+    from .batch import load_jobs_from_dir, load_jobs_from_manifest, run_batch, print_summary
+    from rich.panel import Panel
+
+    if not jobs_dir and not manifest:
+        raise click.UsageError("Provide either --jobs-dir or --manifest")
+    if jobs_dir and manifest:
+        raise click.UsageError("Use --jobs-dir OR --manifest, not both")
+
+    console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
+
+    with open(master) as f:
+        master_text = f.read()
+    console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
+
+    if jobs_dir:
+        jobs = load_jobs_from_dir(jobs_dir)
+        console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
+    else:
+        jobs = load_jobs_from_manifest(manifest)
+        console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
+
+    if not jobs:
+        console.print("[yellow]No jobs found -- nothing to do.[/yellow]")
+        raise SystemExit(0)
+
+    action = "resume + cover letter" if with_cover else "resume"
+    console.print(f"[dim]Generating {action} for each job. Output: {outdir}/[/dim]\n")
+
+    results = run_batch(
+        master_text=master_text,
+        jobs=jobs,
+        outdir=outdir,
+        model=model,
+        fmt=fmt,
+        template=template,
+        with_cover=with_cover,
+        console=console,
+    )
+
+    console.print("")
+    print_summary(results, console, fmt=fmt, with_cover=with_cover)
+    console.print(f"\n[bold green]Output directory: {outdir}/[/bold green]")
+
+
 @main.group()
 def templates():
     """Manage and list resume templates."""
