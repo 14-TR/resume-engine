@@ -1,0 +1,10 @@
+[
+  {
+    "name": "acme-corp",
+    "job": "job-posting.txt"
+  },
+  {
+    "name": "startup-example",
+    "job": "job-posting.txt"
+  }
+]
