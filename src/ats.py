@@ -1,31 +1,123 @@
 """ATS keyword analysis -- match scoring between resume and job posting."""
+
 import re
-import string
 from collections import Counter
 from typing import List, Tuple
 
 # Common stopwords to skip
 STOPWORDS = {
-    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "from", "as", "is", "are", "was", "were", "be",
-    "been", "being", "have", "has", "had", "do", "does", "did", "will",
-    "would", "could", "should", "may", "might", "shall", "can", "need",
-    "that", "this", "these", "those", "i", "you", "we", "they", "he", "she",
-    "it", "our", "your", "their", "its", "my", "we", "us", "not", "no",
-    "if", "then", "than", "so", "also", "just", "more", "most", "some",
-    "any", "all", "each", "both", "other", "into", "through", "about",
-    "up", "out", "such", "what", "how", "when", "where", "who", "which",
-    "work", "working", "worked", "team", "role", "position", "experience",
-    "ability", "strong", "excellent", "good", "great", "well", "new",
-    "including", "etc", "per", "across", "within", "between",
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "but",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+    "from",
+    "as",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "been",
+    "being",
+    "have",
+    "has",
+    "had",
+    "do",
+    "does",
+    "did",
+    "will",
+    "would",
+    "could",
+    "should",
+    "may",
+    "might",
+    "shall",
+    "can",
+    "need",
+    "that",
+    "this",
+    "these",
+    "those",
+    "i",
+    "you",
+    "we",
+    "they",
+    "he",
+    "she",
+    "it",
+    "our",
+    "your",
+    "their",
+    "its",
+    "my",
+    "we",
+    "us",
+    "not",
+    "no",
+    "if",
+    "then",
+    "than",
+    "so",
+    "also",
+    "just",
+    "more",
+    "most",
+    "some",
+    "any",
+    "all",
+    "each",
+    "both",
+    "other",
+    "into",
+    "through",
+    "about",
+    "up",
+    "out",
+    "such",
+    "what",
+    "how",
+    "when",
+    "where",
+    "who",
+    "which",
+    "work",
+    "working",
+    "worked",
+    "team",
+    "role",
+    "position",
+    "experience",
+    "ability",
+    "strong",
+    "excellent",
+    "good",
+    "great",
+    "well",
+    "new",
+    "including",
+    "etc",
+    "per",
+    "across",
+    "within",
+    "between",
 }
 
 # High-value tech/skill patterns to look for
 SKILL_PATTERNS = [
-    r"\b[A-Z][a-zA-Z]+(?:\.[a-zA-Z]+)+\b",   # e.g. Node.js, ASP.NET
-    r"\b[A-Z]{2,}\b",                           # e.g. SQL, AWS, API
-    r"\b[A-Za-z]+\+\+\b",                       # e.g. C++
-    r"\b[A-Za-z]#\b",                           # e.g. C#
+    r"\b[A-Z][a-zA-Z]+(?:\.[a-zA-Z]+)+\b",  # e.g. Node.js, ASP.NET
+    r"\b[A-Z]{2,}\b",  # e.g. SQL, AWS, API
+    r"\b[A-Za-z]+\+\+\b",  # e.g. C++
+    r"\b[A-Za-z]#\b",  # e.g. C#
 ]
 
 
@@ -45,8 +137,11 @@ def _tokenize(text: str) -> List[str]:
 
 def _extract_bigrams(tokens: List[str]) -> List[str]:
     """Extract 2-word phrases from token list."""
-    return [f"{tokens[i]} {tokens[i+1]}" for i in range(len(tokens) - 1)
-            if tokens[i] not in STOPWORDS and tokens[i+1] not in STOPWORDS]
+    return [
+        f"{tokens[i]} {tokens[i + 1]}"
+        for i in range(len(tokens) - 1)
+        if tokens[i] not in STOPWORDS and tokens[i + 1] not in STOPWORDS
+    ]
 
 
 def extract_keywords(job_text: str, top_n: int = 30) -> List[Tuple[str, int]]:

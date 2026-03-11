@@ -1,4 +1,5 @@
 """Template system for resume-engine -- different resume styles and layouts."""
+
 import re
 from pathlib import Path
 from typing import Optional

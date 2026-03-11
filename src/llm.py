@@ -1,6 +1,7 @@
 """LLM provider abstraction -- Ollama (local), OpenAI, Anthropic."""
+
 import os
-import json
+
 import httpx
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
@@ -22,8 +23,12 @@ def complete(prompt: str, model: str = "ollama") -> str:
 def _ollama(prompt: str) -> str:
     resp = httpx.post(
         f"{OLLAMA_URL}/api/generate",
-        json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False,
-              "options": {"temperature": 0.3, "num_predict": 4000}},
+        json={
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 4000},
+        },
         timeout=120,
     )
     resp.raise_for_status()
@@ -37,8 +42,12 @@ def _openai(prompt: str) -> str:
     resp = httpx.post(
         "https://api.openai.com/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
-        json={"model": "gpt-4o-mini", "messages": [{"role": "user", "content": prompt}],
-              "temperature": 0.3, "max_tokens": 4000},
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": 4000,
+        },
         timeout=120,
     )
     resp.raise_for_status()
@@ -52,8 +61,11 @@ def _anthropic(prompt: str) -> str:
     resp = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
-        json={"model": "claude-sonnet-4-20250514", "max_tokens": 4000,
-              "messages": [{"role": "user", "content": prompt}]},
+        json={
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 4000,
+            "messages": [{"role": "user", "content": prompt}],
+        },
         timeout=120,
     )
     resp.raise_for_status()
