@@ -1,15 +1,18 @@
 """CLI entry point for resume-engine."""
+
 import click
 from rich.console import Console
 from rich.panel import Panel
 
 console = Console()
 
+
 @click.group()
 @click.version_option(version="0.1.0")
 def main():
     """AI-powered resume tailoring CLI."""
     pass
+
 
 @main.command()
 @click.option("--master", required=True, help="Path to master resume (markdown)")
@@ -18,35 +21,45 @@ def main():
 @click.option("--output", default="tailored-resume.md", help="Output file path")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-@click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before tailoring")
-@click.option("--template", default=None, help="Resume template/style (run `templates list` to see options)")
+@click.option(
+    "--interactive",
+    "interactive",
+    is_flag=True,
+    default=False,
+    help="Ask gap-filling questions before tailoring",
+)
+@click.option(
+    "--template", default=None, help="Resume template/style (run `templates list` to see options)"
+)
 def tailor(master, job, job_url, output, model, fmt, interactive, template):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
-    
+
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
-    
+
     console.print(Panel("[bold]resume-engine[/bold] — tailoring resume", style="blue"))
-    
+
     # Load master resume
     with open(master) as f:
         master_text = f.read()
     console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
-    
+
     # Load job posting
     if job:
         with open(job) as f:
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
-    
+
     console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
-    
+
     # Interactive gap-filling
     if interactive:
         from .interactive import analyze_gaps, ask_questions, enrich_master
+
         console.print("[dim]Analyzing resume gaps...[/dim]")
         questions = analyze_gaps(master_text, job_text, model=model)
         if questions:
@@ -57,7 +70,7 @@ def tailor(master, job, job_url, output, model, fmt, interactive, template):
 
     # Tailor
     result = tailor_resume(master_text, job_text, model=model, template=template)
-    
+
     # Output
     # Determine final paths
     md_output = output if output.endswith(".md") else output
@@ -67,6 +80,7 @@ def tailor(master, job, job_url, output, model, fmt, interactive, template):
 
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
+
         pdf_output = md_path_to_pdf_path(md_output)
         try:
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
@@ -76,6 +90,7 @@ def tailor(master, job, job_url, output, model, fmt, interactive, template):
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
             console.print("[yellow]Markdown output is still available.[/yellow]")
 
+
 @main.command()
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
@@ -83,30 +98,42 @@ def tailor(master, job, job_url, output, model, fmt, interactive, template):
 @click.option("--output", default="cover-letter.md", help="Output file path")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-@click.option("--interactive", "interactive", is_flag=True, default=False, help="Ask gap-filling questions before writing")
-@click.option("--template", default=None, help="Cover letter template/style (run `templates list` to see options)")
+@click.option(
+    "--interactive",
+    "interactive",
+    is_flag=True,
+    default=False,
+    help="Ask gap-filling questions before writing",
+)
+@click.option(
+    "--template",
+    default=None,
+    help="Cover letter template/style (run `templates list` to see options)",
+)
 def cover(master, job, job_url, output, model, fmt, interactive, template):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
-    
+
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
-    
+
     console.print(Panel("[bold]resume-engine[/bold] — generating cover letter", style="blue"))
-    
+
     with open(master) as f:
         master_text = f.read()
-    
+
     if job:
         with open(job) as f:
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
-    
+
     # Interactive gap-filling
     if interactive:
         from .interactive import analyze_gaps, ask_questions, enrich_master
+
         console.print("[dim]Analyzing resume gaps...[/dim]")
         questions = analyze_gaps(master_text, job_text, model=model)
         if questions:
@@ -116,13 +143,14 @@ def cover(master, job, job_url, output, model, fmt, interactive, template):
             console.print("[dim]No gaps identified -- proceeding.[/dim]")
 
     result = generate_cover_letter(master_text, job_text, model=model, template=template)
-    
+
     with open(output, "w") as f:
         f.write(result)
     console.print(f"[green]Cover letter (markdown) written to {output}[/green]")
 
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
+
         pdf_output = md_path_to_pdf_path(output)
         try:
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
@@ -131,6 +159,7 @@ def cover(master, job, job_url, output, model, fmt, interactive, template):
         except RuntimeError as e:
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
 
+
 @main.command()
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
@@ -138,29 +167,35 @@ def cover(master, job, job_url, output, model, fmt, interactive, template):
 @click.option("--outdir", default="./application", help="Output directory")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-@click.option("--template", default=None, help="Resume/cover letter template/style (run `templates list` to see options)")
+@click.option(
+    "--template",
+    default=None,
+    help="Resume/cover letter template/style (run `templates list` to see options)",
+)
 def package(master, job, job_url, outdir, model, fmt, template):
     """Generate full application package (resume + cover letter)."""
     import os
+
     os.makedirs(outdir, exist_ok=True)
-    
+
     console.print(Panel("[bold]resume-engine[/bold] — full application package", style="blue"))
-    
+
     with open(master) as f:
         master_text = f.read()
-    
+
     if job:
         with open(job) as f:
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
-    
+
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
-    
-    from .engine import tailor_resume, generate_cover_letter
-    
+
+    from .engine import generate_cover_letter, tailor_resume
+
     resume = tailor_resume(master_text, job_text, model=model, template=template)
     resume_md = os.path.join(outdir, "resume.md")
     with open(resume_md, "w") as f:
@@ -175,6 +210,7 @@ def package(master, job, job_url, outdir, model, fmt, template):
 
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
+
         try:
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(resume_md, md_path_to_pdf_path(resume_md))
@@ -190,13 +226,14 @@ def package(master, job, job_url, outdir, model, fmt, template):
 @click.option("--resume", required=True, help="Path to resume (markdown) to analyze")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
-@click.option("--tailored", default=None, help="Path to tailored resume for before/after comparison")
+@click.option(
+    "--tailored", default=None, help="Path to tailored resume for before/after comparison"
+)
 @click.option("--top", default=30, show_default=True, help="Number of keywords to analyze")
 def ats(resume, job, job_url, tailored, top):
     """Analyze ATS keyword match score between resume and job posting."""
+
     from .ats import analyze
-    from rich.table import Table
-    from rich.columns import Columns
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
@@ -211,6 +248,7 @@ def ats(resume, job, job_url, tailored, top):
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
 
     # Analyze original resume
@@ -225,18 +263,20 @@ def ats(resume, job, job_url, tailored, top):
     else:
         score_style = "bold red"
 
-    console.print(f"\n[bold]Original resume match score:[/bold] [{score_style}]{score}%[/{score_style}] ({result['matched_count']}/{result['total_keywords']} keywords)")
+    console.print(
+        f"\n[bold]Original resume match score:[/bold] [{score_style}]{score}%[/{score_style}] ({result['matched_count']}/{result['total_keywords']} keywords)"
+    )
 
     # Show matched keywords
     if result["matched"]:
         matched_str = "  ".join(f"[green]{k}[/green]" for k in result["matched"])
-        console.print(f"\n[bold]Matched keywords:[/bold]")
+        console.print("\n[bold]Matched keywords:[/bold]")
         console.print(f"  {matched_str}")
 
     # Show missing keywords
     if result["missing"]:
         missing_str = "  ".join(f"[red]{k}[/red]" for k in result["missing"])
-        console.print(f"\n[bold]Missing keywords:[/bold]")
+        console.print("\n[bold]Missing keywords:[/bold]")
         console.print(f"  {missing_str}")
 
     # Before/after comparison if tailored resume provided
@@ -258,32 +298,39 @@ def ats(resume, job, job_url, tailored, top):
         delta_str = f"+{delta}%" if delta >= 0 else f"{delta}%"
         delta_style = "green" if delta > 0 else ("red" if delta < 0 else "dim")
 
-        console.print(f"\n[bold]Tailored resume match score:[/bold] [{t_style}]{tailored_score}%[/{t_style}] ({tailored_result['matched_count']}/{tailored_result['total_keywords']} keywords)  [{delta_style}]{delta_str}[/{delta_style}]")
+        console.print(
+            f"\n[bold]Tailored resume match score:[/bold] [{t_style}]{tailored_score}%[/{t_style}] ({tailored_result['matched_count']}/{tailored_result['total_keywords']} keywords)  [{delta_style}]{delta_str}[/{delta_style}]"
+        )
 
         # Show newly matched keywords
         newly_matched = [k for k in tailored_result["matched"] if k in result["missing"]]
         if newly_matched:
-            console.print(f"\n[bold]Newly matched by tailoring:[/bold]")
+            console.print("\n[bold]Newly matched by tailoring:[/bold]")
             console.print("  " + "  ".join(f"[green]{k}[/green]" for k in newly_matched))
 
         still_missing = [k for k in tailored_result["missing"]]
         if still_missing:
-            console.print(f"\n[bold]Still missing:[/bold]")
+            console.print("\n[bold]Still missing:[/bold]")
             console.print("  " + "  ".join(f"[red]{k}[/red]" for k in still_missing))
 
     console.print("")
 
 
-
 @main.command()
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--jobs-dir", default=None, help="Directory of job posting files (.txt or .md)")
-@click.option("--manifest", default=None, help="JSON manifest file listing jobs (see docs for format)")
+@click.option(
+    "--manifest", default=None, help="JSON manifest file listing jobs (see docs for format)"
+)
 @click.option("--outdir", default="./batch-output", show_default=True, help="Root output directory")
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
-@click.option("--template", default=None, help="Resume template/style (run `templates list` to see options)")
-@click.option("--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job")
+@click.option(
+    "--template", default=None, help="Resume template/style (run `templates list` to see options)"
+)
+@click.option(
+    "--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job"
+)
 def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     """Tailor resume to multiple jobs at once.
 
@@ -301,8 +348,9 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     Each job gets its own subfolder in --outdir containing resume.md
     (and cover-letter.md if --with-cover).
     """
-    from .batch import load_jobs_from_dir, load_jobs_from_manifest, run_batch, print_summary
     from rich.panel import Panel
+
+    from .batch import load_jobs_from_dir, load_jobs_from_manifest, print_summary, run_batch
 
     if not jobs_dir and not manifest:
         raise click.UsageError("Provide either --jobs-dir or --manifest")
@@ -354,8 +402,9 @@ def templates():
 @templates.command("list")
 def templates_list():
     """List all available resume templates."""
-    from .templates import list_templates
     from rich.table import Table
+
+    from .templates import list_templates
 
     tmpl_list = list_templates()
 
@@ -380,14 +429,16 @@ def templates_list():
 def templates_show(name):
     """Show the formatting instructions for a template."""
     from .templates import get_template, get_template_instructions
+
     t = get_template(name)
     if t is None:
         from .templates import template_choices
+
         available = ", ".join(template_choices()[1:])  # skip "default"
         console.print(f"[red]Unknown template '{name}'. Available: {available}[/red]")
         raise SystemExit(1)
     console.print(f"\n[bold cyan]{t['name']}[/bold cyan] ({t['slug']}) - {t['description']}\n")
-    console.print(get_template_instructions(t['slug']))
+    console.print(get_template_instructions(t["slug"]))
     console.print("")
 
 

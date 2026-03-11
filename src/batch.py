@@ -1,4 +1,5 @@
 """Batch processing -- tailor resume to multiple jobs at once."""
+
 from __future__ import annotations
 
 import json
@@ -9,13 +10,21 @@ from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 from rich.table import Table
 
 
 @dataclass
 class JobSpec:
     """A single job in a batch run."""
+
     name: str
     job_file: Optional[str] = None
     job_url: Optional[str] = None
@@ -26,6 +35,7 @@ class JobSpec:
                 return f.read()
         elif self.job_url:
             from .scraper import scrape_job_posting
+
             return scrape_job_posting(self.job_url)
         raise ValueError(f"Job '{self.name}' has no file or URL")
 
@@ -71,7 +81,7 @@ def load_jobs_from_manifest(manifest_path: str) -> list[JobSpec]:
     manifest_dir = str(Path(manifest_path).parent)
 
     for i, entry in enumerate(data):
-        name = entry.get("name") or entry.get("title") or f"job-{i+1}"
+        name = entry.get("name") or entry.get("title") or f"job-{i + 1}"
 
         job_file = entry.get("job") or entry.get("job_file")
         if job_file and not os.path.isabs(job_file):
@@ -95,7 +105,7 @@ def run_batch(
     console: Optional[Console] = None,
 ) -> list[BatchResult]:
     """Run batch tailoring and return results."""
-    from .engine import tailor_resume, generate_cover_letter
+    from .engine import generate_cover_letter, tailor_resume
     from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
     if console is None:
@@ -140,7 +150,9 @@ def run_batch(
 
                 # Cover letter
                 if with_cover:
-                    letter = generate_cover_letter(master_text, job_text, model=model, template=template)
+                    letter = generate_cover_letter(
+                        master_text, job_text, model=model, template=template
+                    )
                     cover_md = os.path.join(job_outdir, "cover-letter.md")
                     with open(cover_md, "w") as f:
                         f.write(letter)
@@ -177,7 +189,9 @@ def run_batch(
     return results
 
 
-def print_summary(results: list[BatchResult], console: Console, fmt: str = "md", with_cover: bool = False) -> None:
+def print_summary(
+    results: list[BatchResult], console: Console, fmt: str = "md", with_cover: bool = False
+) -> None:
     """Print a summary table of batch results."""
     table = Table(title="Batch Results", show_header=True, header_style="bold cyan")
     table.add_column("Job", style="bold", min_width=16)

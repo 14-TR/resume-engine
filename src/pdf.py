@@ -1,10 +1,10 @@
 """PDF output via pandoc -- converts markdown to PDF with a clean resume style."""
+
 import os
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-
 
 # Common LaTeX binary locations (macOS BasicTeX, MacTeX, Linux)
 _TEX_PATHS = [
@@ -79,7 +79,8 @@ def markdown_to_pdf(markdown_path: str, output_path: str) -> str:
             base_cmd += [
                 f"--pdf-engine={pdflatex}",
                 f"--include-in-header={header_path}",
-                "-V", "fontsize=11pt",
+                "-V",
+                "fontsize=11pt",
             ]
 
         result = subprocess.run(base_cmd, capture_output=True, text=True, env=env)

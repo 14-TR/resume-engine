@@ -1,4 +1,5 @@
 """Core tailoring engine -- LLM-powered resume customization."""
+
 from .llm import complete
 
 _BASE_TAILOR_PROMPT = """You are an expert resume writer. Given a master resume and a job posting, create a tailored version of the resume that:
@@ -47,9 +48,12 @@ JOB POSTING:
 Output the cover letter in markdown format. Nothing else."""
 
 
-def tailor_resume(master_text: str, job_text: str, model: str = "ollama", template: str = "default") -> str:
+def tailor_resume(
+    master_text: str, job_text: str, model: str = "ollama", template: str = "default"
+) -> str:
     """Tailor a master resume to a specific job posting."""
     from .templates import get_template_instructions
+
     template_instr = get_template_instructions(template)
     if template_instr:
         template_section = f"\nLAYOUT STYLE INSTRUCTIONS:\n{template_instr}\n\n"
@@ -64,14 +68,24 @@ def tailor_resume(master_text: str, job_text: str, model: str = "ollama", templa
     return complete(prompt, model=model)
 
 
-def generate_cover_letter(master_text: str, job_text: str, model: str = "ollama", template: str = "default") -> str:
+def generate_cover_letter(
+    master_text: str, job_text: str, model: str = "ollama", template: str = "default"
+) -> str:
     """Generate a cover letter for a job posting."""
     from .templates import get_template_instructions
+
     template_instr = get_template_instructions(template) if template else ""
     # Cover letters don't use structural layout templates, but pass tone/style hints if available
-    style_hint = f"\nSTYLE NOTE: Align tone and formality with the {template} resume style if applicable.\n" if template_instr else ""
-    prompt = _BASE_COVER_PROMPT.format(
-        master=master_text,
-        job=job_text,
-    ) + style_hint
+    style_hint = (
+        f"\nSTYLE NOTE: Align tone and formality with the {template} resume style if applicable.\n"
+        if template_instr
+        else ""
+    )
+    prompt = (
+        _BASE_COVER_PROMPT.format(
+            master=master_text,
+            job=job_text,
+        )
+        + style_hint
+    )
     return complete(prompt, model=model)

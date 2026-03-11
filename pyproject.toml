@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.3"]
 
 [project.scripts]
 resume-engine = "src.cli:main"
@@ -36,3 +36,17 @@ resume-engine = "src.cli:main"
 Homepage = "https://github.com/14-TR/resume-engine"
 Repository = "https://github.com/14-TR/resume-engine"
 "Bug Tracker" = "https://github.com/14-TR/resume-engine/issues"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

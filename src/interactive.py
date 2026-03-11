@@ -1,6 +1,8 @@
 """Interactive mode -- gap analysis and user Q&A before tailoring."""
+
 import json
 import re
+
 from .llm import complete
 
 GAP_ANALYSIS_PROMPT = """You are a resume expert reviewing a master resume against a job posting.
@@ -61,8 +63,11 @@ def analyze_gaps(master_text: str, job_text: str, model: str = "ollama") -> list
 def ask_questions(questions: list[dict], console) -> dict[str, str]:
     """Present questions to the user and collect answers. Returns field -> answer map."""
     import click
+
     answers = {}
-    console.print("\n[bold yellow]Interactive mode[/bold yellow] -- answer a few questions to strengthen your resume.\n")
+    console.print(
+        "\n[bold yellow]Interactive mode[/bold yellow] -- answer a few questions to strengthen your resume.\n"
+    )
     console.print("[dim]Press Enter to skip any question.[/dim]\n")
 
     for i, q in enumerate(questions, 1):
