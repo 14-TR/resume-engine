@@ -1,6 +1,6 @@
 """Tests for ATS keyword analysis module."""
 
-from src.ats import _extract_bigrams, _tokenize, analyze, extract_keywords, score_resume
+from resume_engine.ats import _extract_bigrams, _tokenize, analyze, extract_keywords, score_resume
 
 
 class TestTokenize:
