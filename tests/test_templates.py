@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.templates import get_template, get_template_instructions, list_templates, template_choices
+from resume_engine.templates import get_template, get_template_instructions, list_templates, template_choices
 
 
 class TestListTemplates:

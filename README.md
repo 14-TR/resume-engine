@@ -191,3 +191,25 @@ ANTHROPIC_API_KEY=sk-... resume-engine tailor --master resume.md --job posting.t
 ## License
 
 MIT
+
+## Contributing
+
+Contributions welcome. Please open an issue or PR.
+
+```bash
+git clone https://github.com/14-TR/resume-engine
+cd resume-engine
+pip install -e ".[dev]"
+pytest tests/
+```
+
+## Releasing
+
+Releases are published to PyPI automatically via GitHub Actions when a version tag is pushed:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Requires **PyPI Trusted Publishing** configured in the `pypi` environment on the repo (no API token needed).
