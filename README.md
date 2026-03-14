@@ -1,5 +1,7 @@
 # resume-engine
 
+**[Documentation](https://14-tr.github.io/resume-engine)** | [PyPI](https://pypi.org/project/resume-engine/) | [GitHub](https://github.com/14-TR/resume-engine)
+
 CLI tool that takes a master resume + job posting → tailored resume.
 
 ```bash
