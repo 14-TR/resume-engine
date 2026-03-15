@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- `resume-engine import` command -- converts any raw resume text (LinkedIn copy-paste, PDF export, old resumes) into a structured master resume markdown
+- 12 new tests covering the import module and CLI command
+- README documentation for the LinkedIn/import workflow
+
+
 ## [0.2.0] - 2026-03-12
 
 ### Changed
