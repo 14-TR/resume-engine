@@ -2,9 +2,7 @@
 
 import csv
 import io
-import json
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -19,7 +17,6 @@ from resume_engine.linkedin import (
     _read_csv,
     parse_linkedin_export,
 )
-
 
 # ---------------------------------------------------------------------------
 # CSV parsing helpers
@@ -127,8 +124,26 @@ class TestExtractEducation:
     def test_full_education(self):
         files = {
             "Education.csv": make_csv(
-                ["School Name", "Degree Name", "Field Of Study", "Start Date", "End Date", "Activities and Societies", "Notes"],
-                [["State University", "B.S.", "Computer Science", "2014", "2018", "Chess Club", ""]],
+                [
+                    "School Name",
+                    "Degree Name",
+                    "Field Of Study",
+                    "Start Date",
+                    "End Date",
+                    "Activities and Societies",
+                    "Notes",
+                ],
+                [
+                    [
+                        "State University",
+                        "B.S.",
+                        "Computer Science",
+                        "2014",
+                        "2018",
+                        "Chess Club",
+                        "",
+                    ]
+                ],
             )
         }
         result = _extract_education(files)
