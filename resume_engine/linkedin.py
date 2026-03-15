@@ -1,5 +1,7 @@
 """LinkedIn profile import -- fetch public profile URL or parse LinkedIn data export."""
 
+from __future__ import annotations
+
 import csv
 import io
 import json
