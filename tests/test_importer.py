@@ -1,7 +1,5 @@
 """Tests for the resume importer module."""
 
-import pytest
-
 from resume_engine.importer import _IMPORT_PROMPT, text_to_master_resume
 
 

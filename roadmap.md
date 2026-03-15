@@ -12,7 +12,7 @@
 4. Interactive mode — ask user questions to fill gaps
 5. Template system — different resume styles/layouts
 6. Batch mode — tailor to multiple jobs at once
-7. ~~LinkedIn profile import~~ -- `import` command accepts any resume text (LinkedIn copy-paste, PDF export, etc.)
+7. ~~LinkedIn profile import as master resume source~~ (done)
 8. PyPI publish — `pip install resume-engine`
 9. GitHub Actions CI (tests + lint)
 10. Documentation site with tutorials
