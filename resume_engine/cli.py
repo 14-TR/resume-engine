@@ -1,3 +1,4 @@
+from __future__ import annotations
 """CLI entry point for resume-engine."""
 
 import click
