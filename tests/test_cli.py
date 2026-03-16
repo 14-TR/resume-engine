@@ -21,6 +21,7 @@ class TestCLIHelp:
         assert "ats" in result.output
         assert "batch" in result.output
         assert "templates" in result.output
+        assert "import" in result.output
 
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
@@ -113,3 +114,29 @@ class TestTemplatesCommand:
     def test_templates_show_unknown(self, runner):
         result = runner.invoke(main, ["templates", "show", "nonexistent-xyz"])
         assert result.exit_code != 0
+
+
+class TestImportCommand:
+    def test_import_help(self, runner):
+        result = runner.invoke(main, ["import", "--help"])
+        assert result.exit_code == 0
+        assert "--text" in result.output
+        assert "--stdin" in result.output
+        assert "--output" in result.output
+        assert "--model" in result.output
+
+    def test_import_requires_source(self, runner, tmp_path):
+        result = runner.invoke(main, ["import", "--output", str(tmp_path / "out.md")])
+        assert result.exit_code != 0
+        assert "stdin" in result.output.lower() or "text" in result.output.lower()
+
+    def test_import_rejects_both_sources(self, runner, tmp_path):
+        text_file = tmp_path / "raw.txt"
+        text_file.write_text("John Doe\nPython developer")
+        result = runner.invoke(
+            main,
+            ["import", "--text", str(text_file), "--stdin", "--output", str(tmp_path / "out.md")],
+            input="some stdin",
+        )
+        assert result.exit_code != 0
+        assert "stdin" in result.output.lower() or "both" in result.output.lower()

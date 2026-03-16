@@ -267,7 +267,7 @@ def ats(resume, job, job_url, tailored, top):
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] — ATS keyword analysis", style="blue"))
+    console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
     with open(resume) as f:
         resume_text = f.read()
@@ -420,6 +420,42 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     console.print("")
     print_summary(results, console, fmt=fmt, with_cover=with_cover)
     console.print(f"\n[bold green]Output directory: {outdir}/[/bold green]")
+
+
+
+@main.command("import")
+@click.option("--text", default=None, help="Path to raw resume text file")
+@click.option("--output", default="master-resume.md", show_default=True, help="Output file path")
+@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
+@click.option("--stdin", "from_stdin", is_flag=True, default=False, help="Read raw text from stdin")
+def import_resume(text, output, model, from_stdin):
+    """Convert raw resume text to a structured master resume (markdown)."""
+    import sys
+
+    from .engine import import_resume as _import_resume
+
+    if not text and not from_stdin:
+        raise click.UsageError("Provide --text <file> or use --stdin to read from stdin.")
+    if text and from_stdin:
+        raise click.UsageError("Use --text OR --stdin, not both.")
+
+    console.print(Panel("[bold]resume-engine[/bold] -- importing resume", style="blue"))
+
+    if from_stdin:
+        raw_text = sys.stdin.read()
+        console.print(f"[dim]Read {len(raw_text)} chars from stdin[/dim]")
+    else:
+        with open(text) as f:
+            raw_text = f.read()
+        console.print(f"[dim]Loaded {len(raw_text)} chars from {text}[/dim]")
+
+    console.print("[dim]Converting to structured master resume...[/dim]")
+    result = _import_resume(raw_text, model=model)
+
+    with open(output, "w") as f:
+        f.write(result)
+    console.print(f"[green]Master resume written to {output}[/green]")
+    console.print("[dim]Review the output and adjust as needed before using as your master resume.[/dim]")
 
 
 @main.group()

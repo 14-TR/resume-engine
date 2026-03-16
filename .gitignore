@@ -8,3 +8,4 @@ build/
 output/
 application/
 .venv/
+site/

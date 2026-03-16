@@ -89,3 +89,30 @@ def generate_cover_letter(
         + style_hint
     )
     return complete(prompt, model=model)
+
+
+_BASE_IMPORT_PROMPT = """You are an expert resume writer and career coach. Your task is to convert raw, unformatted resume text into a clean, structured master resume in markdown format.
+
+A master resume is a COMPLETE career document -- it includes everything, not tailored to any specific job. The user will use it as a source to tailor resumes for individual applications.
+
+CONVERSION RULES:
+- Preserve all real content (experience, skills, education, projects, certifications)
+- Structure with clear markdown sections: Summary, Skills, Experience, Education, Projects (if any), Certifications (if any)
+- Format experience as: ### Job Title -- Company, City ST (Year - Year)
+- Use bullet points for achievements under each role
+- No em dashes (use hyphens instead)
+- Keep contact info on the first line(s)
+- Preserve dates accurately
+- Do NOT fabricate, invent, or hallucinate any details
+- If the input is already well-formatted, clean it up and standardize the structure
+
+RAW RESUME TEXT:
+{raw_text}
+
+Output the structured master resume in clean markdown format. Nothing else."""
+
+
+def import_resume(raw_text: str, model: str = "ollama") -> str:
+    """Convert raw resume text to a structured master resume in markdown."""
+    prompt = _BASE_IMPORT_PROMPT.format(raw_text=raw_text)
+    return complete(prompt, model=model)
