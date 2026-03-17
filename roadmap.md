@@ -6,7 +6,7 @@
 
 ## Priority Queue
 
-1. Add example master resume + job posting in examples/ directory
+1. ~~Add example master resume + job posting in examples/ directory~~ (done)
 2. PDF output via weasyprint or pandoc (--format pdf)
 3. ATS keyword analysis — show match score before/after tailoring
 4. Interactive mode — ask user questions to fill gaps
