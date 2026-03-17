@@ -279,7 +279,7 @@ def ats(resume, job, job_url, tailored, top):
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
+    console.print(Panel("[bold]resume-engine[/bold] — ATS keyword analysis", style="blue"))
 
     with open(resume) as f:
         resume_text = f.read()
@@ -435,39 +435,55 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
 
 
 @main.command("import")
-@click.option("--text", default=None, help="Path to raw resume text file")
-@click.option("--output", default="master-resume.md", show_default=True, help="Output file path")
+@click.option("--text", "text_file", default=None, help="Path to raw resume text file (any format)")
+@click.option(
+    "--output", default="master-resume.md", show_default=True, help="Output markdown file path"
+)
 @click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
 @click.option("--stdin", "from_stdin", is_flag=True, default=False, help="Read raw text from stdin")
-def import_resume(text, output, model, from_stdin):
-    """Convert raw resume text to a structured master resume (markdown)."""
+def import_resume(text_file, output, model, from_stdin):
+    """Convert raw resume text to a structured master resume markdown.
+
+    Accepts resume text from any source: LinkedIn copy-paste, exported PDFs,
+    old resume documents, or any plain-text format. The LLM restructures it
+    into a clean master resume ready for tailoring.
+
+    \b
+    Examples:
+      # From a file (e.g. LinkedIn PDF export text)
+      resume-engine import --text linkedin-export.txt --output master-resume.md
+
+      # From stdin (paste directly)
+      pbpaste | resume-engine import --stdin --output master-resume.md --model openai
+    """
     import sys
 
-    from .engine import import_resume as _import_resume
+    from .importer import text_to_master_resume
 
-    if not text and not from_stdin:
-        raise click.UsageError("Provide --text <file> or use --stdin to read from stdin.")
-    if text and from_stdin:
-        raise click.UsageError("Use --text OR --stdin, not both.")
+    if not text_file and not from_stdin:
+        raise click.UsageError("Provide --text <file> or --stdin to read from stdin")
+    if text_file and from_stdin:
+        raise click.UsageError("Use --text OR --stdin, not both")
 
     console.print(Panel("[bold]resume-engine[/bold] -- importing resume", style="blue"))
 
     if from_stdin:
+        console.print("[dim]Reading from stdin...[/dim]")
         raw_text = sys.stdin.read()
-        console.print(f"[dim]Read {len(raw_text)} chars from stdin[/dim]")
     else:
-        with open(text) as f:
+        with open(text_file) as f:
             raw_text = f.read()
-        console.print(f"[dim]Loaded {len(raw_text)} chars from {text}[/dim]")
 
-    console.print("[dim]Converting to structured master resume...[/dim]")
-    result = _import_resume(raw_text, model=model)
+    console.print(f"[dim]Input: {len(raw_text)} chars -- converting to master resume...[/dim]")
+
+    result = text_to_master_resume(raw_text, model=model)
 
     with open(output, "w") as f:
         f.write(result)
+
     console.print(f"[green]Master resume written to {output}[/green]")
     console.print(
-        "[dim]Review the output and adjust as needed before using as your master resume.[/dim]"
+        "[dim]Tip: review and fill any gaps, then use `resume-engine tailor` to target specific jobs.[/dim]"
     )
 
 

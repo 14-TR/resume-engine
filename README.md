@@ -24,6 +24,30 @@ resume-engine cover --master resume.md --job posting.txt --output cover.md
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 ```
 
+
+## Importing from LinkedIn or Other Sources
+
+Don't have a master resume in markdown yet? `import` converts any raw resume text into a structured master resume:
+
+```bash
+# From a saved text file (e.g. LinkedIn PDF export saved as .txt)
+resume-engine import --text linkedin-export.txt --output master-resume.md
+
+# From clipboard (macOS)
+pbpaste | resume-engine import --stdin --output master-resume.md
+
+# Use a cloud model for better accuracy
+resume-engine import --text raw-resume.txt --output master-resume.md --model openai
+```
+
+**LinkedIn workflow:**
+1. Go to your LinkedIn profile
+2. Click "More" -> "Save to PDF" (or copy-paste profile text)
+3. Convert PDF to text: `pdftotext linkedin-profile.pdf linkedin-export.txt`
+4. Run `resume-engine import --text linkedin-export.txt --output master-resume.md`
+5. Review the output and fill any gaps
+6. Use as your master resume for tailoring
+
 ## How it works
 
 1. **Parse** your master resume (markdown)
