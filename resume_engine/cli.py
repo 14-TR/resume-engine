@@ -1,5 +1,7 @@
 """CLI entry point for resume-engine."""
 
+from __future__ import annotations
+
 import click
 from rich.console import Console
 from rich.panel import Panel
