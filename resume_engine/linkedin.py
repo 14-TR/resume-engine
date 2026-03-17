@@ -7,10 +7,10 @@ import re
 from pathlib import Path
 from typing import Optional
 
-
 # ---------------------------------------------------------------------------
 # Public URL scraper
 # ---------------------------------------------------------------------------
+
 
 def scrape_linkedin_profile(url: str) -> str:
     """
@@ -108,11 +108,7 @@ def _parse_linkedin_html(html: str, url: str) -> str:
 
     # Return a basic markdown wrapper around extracted text
     profile_url_slug = url.rstrip("/").split("/")[-1]
-    return (
-        f"# LinkedIn Profile: {profile_url_slug}\n\n"
-        f"_Source: {url}_\n\n"
-        f"{clean[:4000]}"
-    )
+    return f"# LinkedIn Profile: {profile_url_slug}\n\n_Source: {url}_\n\n{clean[:4000]}"
 
 
 def _json_ld_to_markdown(data: dict, url: str) -> str:
@@ -181,6 +177,7 @@ def _json_ld_to_markdown(data: dict, url: str) -> str:
 # ---------------------------------------------------------------------------
 # LinkedIn data export parser
 # ---------------------------------------------------------------------------
+
 
 def parse_linkedin_export(export_path: str) -> str:
     """

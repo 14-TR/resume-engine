@@ -6,6 +6,7 @@ from rich.panel import Panel
 
 console = Console()
 
+
 def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: str | None) -> str:
     """Load master resume text from a file, LinkedIn URL, or LinkedIn export."""
     sources = [s for s in [master, linkedin_url, linkedin_export] if s]
@@ -14,23 +15,22 @@ def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: 
             "Provide --master, --linkedin-url, or --linkedin-export as the resume source."
         )
     if len(sources) > 1:
-        raise click.UsageError(
-            "Use only one of --master, --linkedin-url, or --linkedin-export."
-        )
+        raise click.UsageError("Use only one of --master, --linkedin-url, or --linkedin-export.")
 
     if linkedin_url:
         from .linkedin import scrape_linkedin_profile
+
         console.print("[dim]Fetching LinkedIn profile...[/dim]")
         return scrape_linkedin_profile(linkedin_url)
 
     if linkedin_export:
         from .linkedin import parse_linkedin_export
+
         console.print("[dim]Parsing LinkedIn export...[/dim]")
         return parse_linkedin_export(linkedin_export)
 
     with open(master) as f:  # type: ignore[arg-type]
         return f.read()
-
 
 
 @click.group()
@@ -42,7 +42,9 @@ def main():
 
 @main.command()
 @click.option("--master", default=None, help="Path to master resume (markdown)")
-@click.option("--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
 @click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
@@ -59,7 +61,9 @@ def main():
 @click.option(
     "--template", default=None, help="Resume template/style (run `templates list` to see options)"
 )
-def tailor(master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template):
+def tailor(
+    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
+):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
 
@@ -120,7 +124,9 @@ def tailor(master, linkedin_url, linkedin_export, job, job_url, output, model, f
 
 @main.command()
 @click.option("--master", default=None, help="Path to master resume (markdown)")
-@click.option("--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
 @click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
@@ -139,7 +145,9 @@ def tailor(master, linkedin_url, linkedin_export, job, job_url, output, model, f
     default=None,
     help="Cover letter template/style (run `templates list` to see options)",
 )
-def cover(master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template):
+def cover(
+    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
+):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
 
@@ -190,7 +198,9 @@ def cover(master, linkedin_url, linkedin_export, job, job_url, output, model, fm
 
 @main.command()
 @click.option("--master", default=None, help="Path to master resume (markdown)")
-@click.option("--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
 @click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
@@ -422,7 +432,6 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     console.print(f"\n[bold green]Output directory: {outdir}/[/bold green]")
 
 
-
 @main.command("import")
 @click.option("--text", default=None, help="Path to raw resume text file")
 @click.option("--output", default="master-resume.md", show_default=True, help="Output file path")
@@ -455,7 +464,9 @@ def import_resume(text, output, model, from_stdin):
     with open(output, "w") as f:
         f.write(result)
     console.print(f"[green]Master resume written to {output}[/green]")
-    console.print("[dim]Review the output and adjust as needed before using as your master resume.[/dim]")
+    console.print(
+        "[dim]Review the output and adjust as needed before using as your master resume.[/dim]"
+    )
 
 
 @main.group()

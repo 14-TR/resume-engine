@@ -39,7 +39,7 @@ class TestImportResumePrompt:
 
         call_args = mock_complete.call_args
         # model param may be positional or keyword
-        model_arg = (
-            call_args[1].get("model") if call_args[1] else None
-        ) or (call_args[0][1] if len(call_args[0]) > 1 else None)
+        model_arg = (call_args[1].get("model") if call_args[1] else None) or (
+            call_args[0][1] if len(call_args[0]) > 1 else None
+        )
         assert model_arg == "ollama"
