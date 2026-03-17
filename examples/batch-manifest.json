@@ -1,10 +1,10 @@
 [
   {
-    "name": "acme-corp",
-    "job": "job-posting.txt"
+    "name": "meridian-cloud",
+    "job": "examples/job-posting.txt"
   },
   {
-    "name": "startup-example",
-    "job": "job-posting.txt"
+    "name": "helix-ui",
+    "job": "examples/job-posting-frontend.txt"
   }
 ]

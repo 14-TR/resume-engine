@@ -1,0 +1,40 @@
+Alex Rivera
+Email: alex.rivera@email.com
+Phone: (555) 217-4890
+Denver, CO
+
+PROFESSIONAL SUMMARY
+Software engineer with 6 years building web apps and data systems. Good with Python and cloud stuff. Led a few teams, built some cool things.
+
+WORK EXPERIENCE
+
+Senior Software Engineer at Databridge Inc (Denver CO)
+2022 to now
+- Moved our Django app to microservices which made things way faster
+- Built a data pipeline that handles millions of events per day
+- Saved money on AWS by being smarter about instance sizes
+- I mentor some junior engineers and run architecture reviews
+- Built version 2 of our public API
+
+Software Engineer at Clearpath Analytics (Boulder CO)
+2020 to 2022
+- Made an ETL pipeline that pulls from a bunch of APIs
+- Built a dashboard that analysts use every day
+- Got test coverage up from like 38% to 82%
+- Automated a weekly report that used to take forever
+
+Freelance Developer
+2018 to 2020
+- Did 11 projects for clients, websites and tools and scrapers
+- Used Python, Flask, PostgreSQL mostly
+
+EDUCATION
+BS in Computer Science from CU Boulder, graduated 2018
+Minor in Math, 3.6 GPA
+
+SKILLS
+Python, TypeScript, Go, SQL, FastAPI, Django, React, AWS, Docker, Kubernetes, Terraform, PostgreSQL, Redis
+
+CERTIFICATIONS
+AWS Solutions Architect Associate (2023)
+KCNA (2024)

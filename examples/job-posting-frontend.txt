@@ -1,0 +1,46 @@
+Frontend Engineer - Design Systems
+Helix UI | San Francisco, CA (Hybrid)
+Posted: March 2026
+
+About Helix UI
+
+Helix UI is a design-tooling startup building the next generation of component libraries for product teams. Our tools power 500+ design systems across Fortune 500 companies and fast-growing startups. We believe great developer experience starts with great components.
+
+About the Role
+
+We are hiring a Frontend Engineer to join our Design Systems team. You will build, document, and maintain our open-source component library used by thousands of developers. This role blends deep frontend expertise with a passion for developer experience, accessibility, and visual polish.
+
+Responsibilities
+
+- Build and maintain reusable React components with TypeScript
+- Write comprehensive documentation and interactive examples (Storybook)
+- Ensure WCAG 2.1 AA accessibility across all components
+- Collaborate with designers to translate Figma specs into pixel-perfect code
+- Optimize bundle size and runtime performance
+- Review pull requests and mentor junior engineers
+- Contribute to our design token system and theming architecture
+
+Requirements
+
+- 3+ years of professional frontend development with React
+- Strong TypeScript skills
+- Experience building or maintaining a component library or design system
+- Understanding of CSS architecture (CSS Modules, Tailwind, or CSS-in-JS)
+- Knowledge of accessibility standards and testing (axe, screen readers)
+- Familiarity with testing frameworks (Jest, Playwright, or Cypress)
+
+Nice to Have
+
+- Experience with Storybook or similar documentation tools
+- Contributions to open-source projects
+- Familiarity with Figma plugin development
+- Experience with monorepo tooling (Turborepo, Nx)
+
+Compensation
+
+$140,000 - $170,000 base salary + equity
+San Francisco, CA (hybrid 3 days/week)
+
+How to Apply
+
+Apply at careers.helixui.dev/frontend-engineer
