@@ -64,3 +64,5 @@ nav:
       - Master Resume Format: guides/master-resume-format.md
       - Job Search Workflow: guides/job-search-workflow.md
   - Contributing: contributing.md
+  - Troubleshooting: troubleshooting.md
+  - Changelog: changelog.md
