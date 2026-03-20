@@ -3,6 +3,11 @@
 ## [Unreleased]
 
 ### Added
+- `resume-engine check` command -- system health checker that verifies Ollama is running, pandoc/pdflatex are installed, and API keys are set; exits non-zero when required checks fail; 20 new tests in `tests/test_check.py`
+
+## [Previously Unreleased]
+
+### Added
 - `resume-engine import` command -- converts any raw resume text (LinkedIn copy-paste, PDF export, old resumes) into a structured master resume markdown
 - 12 new tests covering the import module and CLI command
 - README documentation for the LinkedIn/import workflow

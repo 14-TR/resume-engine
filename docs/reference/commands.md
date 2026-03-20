@@ -230,3 +230,44 @@ resume-engine templates show <name>
 ```bash
 resume-engine templates show technical
 ```
+
+---
+
+## `check`
+
+Verify that all resume-engine dependencies are installed and configured.
+
+```bash
+resume-engine check
+```
+
+Checks the following:
+
+| Check | Category | What it tests |
+|-------|----------|---------------|
+| Ollama | LLM Backend (required) | Ollama is running, shows pulled models |
+| pandoc | PDF Output (optional) | pandoc is in PATH |
+| pdflatex | PDF Output (optional) | LaTeX engine available for PDF conversion |
+| OpenAI API key | LLM Backend (optional) | `OPENAI_API_KEY` is set and looks valid |
+| Anthropic API key | LLM Backend (optional) | `ANTHROPIC_API_KEY` is set and looks valid |
+
+**Exit codes:**
+- `0` — all required checks passed
+- `1` — one or more required checks failed
+
+**Example output:**
+
+```
+ Check                  Category                    Status  Details
+ Ollama                 LLM Backend                 OK      running at http://localhost:11434 -- 2 model(s) pulled
+ pandoc                 PDF Output (optional)       OK      pandoc 3.2.1
+ pdflatex               PDF Output (optional)       FAIL    pdflatex not found in PATH
+                                                             Hint: brew install basictex then sudo tlmgr install ...
+ OpenAI API key         LLM Backend (optional)      FAIL    OPENAI_API_KEY not set
+ Anthropic API key      LLM Backend (optional)      FAIL    ANTHROPIC_API_KEY not set
+
+All required checks passed. resume-engine is ready to use.
+```
+
+Run this after installation to confirm everything is wired up correctly.
+

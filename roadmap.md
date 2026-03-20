@@ -15,7 +15,8 @@
 7. ~~LinkedIn profile import as master resume source~~ (done)
 8. ~~PyPI publish — `pip install resume-engine`~~ (done)
 9. ~~GitHub Actions CI (tests + lint)~~ (done)
-10. Documentation site with tutorials
+10. ~~`check` command -- system health checker~~ (done)
+11. Documentation site with tutorials
 
 ## Constraints
 - Python 3.9+, minimal dependencies
