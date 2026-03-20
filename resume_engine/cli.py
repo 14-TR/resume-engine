@@ -520,7 +520,9 @@ def check():
     console.print("")
 
     if all_required_ok:
-        console.print("[bold green]All required checks passed.[/bold green] resume-engine is ready to use.")
+        console.print(
+            "[bold green]All required checks passed.[/bold green] resume-engine is ready to use."
+        )
     else:
         console.print(
             "[bold yellow]Some required checks failed.[/bold yellow] "

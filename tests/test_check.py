@@ -17,9 +17,7 @@ from resume_engine.check import (
 class TestCheckOllama:
     def test_ok_when_reachable(self):
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "models": [{"name": "qwen2.5:14b"}, {"name": "llama3.2:3b"}]
-        }
+        mock_resp.json.return_value = {"models": [{"name": "qwen2.5:14b"}, {"name": "llama3.2:3b"}]}
         mock_resp.raise_for_status = MagicMock()
 
         with patch("httpx.get", return_value=mock_resp):

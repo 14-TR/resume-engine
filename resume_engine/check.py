@@ -97,9 +97,8 @@ def run_checks() -> list[dict]:
         model_count = len(ollama.get("models", []))
         model_names = ", ".join(ollama.get("models", [])[:3])
         suffix = f" (+{model_count - 3} more)" if model_count > 3 else ""
-        entry["detail"] = (
-            f"running at {ollama['url']} -- {model_count} model(s) pulled"
-            + (f" ({model_names}{suffix})" if model_names else "")
+        entry["detail"] = f"running at {ollama['url']} -- {model_count} model(s) pulled" + (
+            f" ({model_names}{suffix})" if model_names else ""
         )
     else:
         entry["detail"] = ollama.get("error", "not reachable")
