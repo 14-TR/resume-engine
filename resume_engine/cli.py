@@ -487,7 +487,6 @@ def import_resume(text_file, output, model, from_stdin):
     )
 
 
-
 @main.command()
 def check():
     """Check that resume-engine dependencies are installed and configured."""
