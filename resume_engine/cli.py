@@ -279,7 +279,7 @@ def ats(resume, job, job_url, tailored, top):
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] — ATS keyword analysis", style="blue"))
+    console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
     with open(resume) as f:
         resume_text = f.read()
@@ -487,6 +487,51 @@ def import_resume(text_file, output, model, from_stdin):
     )
 
 
+
+@main.command()
+def check():
+    """Check that resume-engine dependencies are installed and configured."""
+    from rich.table import Table
+
+    from .check import run_checks
+
+    console.print(Panel("[bold]resume-engine[/bold] -- system check", style="blue"))
+
+    results = run_checks()
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Check", style="bold", width=22)
+    table.add_column("Category", width=26)
+    table.add_column("Status", width=8)
+    table.add_column("Details")
+
+    all_required_ok = True
+    for r in results:
+        status = "[green]OK[/green]" if r["ok"] else "[red]FAIL[/red]"
+        detail = r.get("detail", "")
+        hint = r.get("hint", "")
+        detail_str = detail if r["ok"] else f"[red]{detail}[/red]"
+        if hint and not r["ok"]:
+            detail_str += f"\n  [dim]Hint: {hint}[/dim]"
+        table.add_row(r["name"], r["category"], status, detail_str)
+        if not r["ok"] and "optional" not in r["category"].lower():
+            all_required_ok = False
+
+    console.print(table)
+    console.print("")
+
+    if all_required_ok:
+        console.print(
+            "[bold green]All required checks passed.[/bold green] resume-engine is ready to use."
+        )
+    else:
+        console.print(
+            "[bold yellow]Some required checks failed.[/bold yellow] "
+            "Run [bold]resume-engine check[/bold] after fixing the issues above."
+        )
+        raise SystemExit(1)
+
+
 @main.group()
 def templates():
     """Manage and list resume templates."""
@@ -514,7 +559,7 @@ def templates_list():
 
     console.print(table)
     console.print(
-        "\n[dim]Use with:[/dim] python -m src.cli tailor --template technical --master resume.md --job job.txt",
+        "\n[dim]Use with:[/dim] resume-engine tailor --template technical --master resume.md --job job.txt",
     )
 
 
