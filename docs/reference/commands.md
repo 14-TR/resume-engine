@@ -207,6 +207,42 @@ resume-engine import --text raw.txt --output master.md --model openai
 
 ---
 
+---
+
+## `check`
+
+Verify that all required and optional dependencies are installed and reachable.
+
+```bash
+resume-engine check
+```
+
+No options -- just run it. Resume Engine checks:
+
+| Dependency | Category | Required? |
+|---|---|---|
+| Ollama | LLM Backend | No (default backend, but optional if using cloud) |
+| pandoc | PDF Output | No |
+| pdflatex | PDF Output | No |
+| OPENAI_API_KEY | LLM Backend | No |
+| ANTHROPIC_API_KEY | LLM Backend | No |
+
+**Example output:**
+
+```
+ resume-engine -- system check
+
+  Ollama                   OK    running at http://localhost:11434 -- 2 model(s) pulled
+  pandoc                   OK    pandoc 3.1.2
+  pdflatex                WARN   pdflatex not found in PATH
+  OpenAI API key          WARN   OPENAI_API_KEY not set
+  Anthropic API key       WARN   ANTHROPIC_API_KEY not set
+
+All required checks passed. resume-engine is ready to use.
+```
+
+Run this after installing to confirm your setup is working before processing your first resume.
+
 ## `templates list`
 
 List all available resume templates.
