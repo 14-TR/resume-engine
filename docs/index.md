@@ -28,6 +28,7 @@ Resume Engine takes your master resume and a job posting, and produces a tailore
 | `batch` | Tailor to multiple jobs at once |
 | `import` | Convert raw resume text to master format |
 | `templates list` | Browse built-in layout styles |
+| `check` | Verify dependencies (Ollama, pandoc, API keys) |
 
 ## Quick Example
 

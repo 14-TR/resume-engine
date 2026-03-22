@@ -25,6 +25,17 @@ cd resume-engine
 pip install -e ".[dev]"
 ```
 
+
+## Verify Your Setup
+
+After installing, run the system check to confirm everything is working:
+
+```bash
+resume-engine check
+```
+
+This checks Ollama connectivity, pandoc availability, and any API keys you have configured. Green means go -- you are ready to tailor resumes.
+
 ## LLM Backend Setup
 
 Resume Engine uses **Ollama** by default (free, runs locally). No API key required.
