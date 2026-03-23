@@ -9,6 +9,13 @@ from rich.panel import Panel
 console = Console()
 
 
+def _cfg_default(key: str, fallback=None):
+    """Return config default for a key, used as Click option defaults."""
+    from .config import get as cfg_get
+
+    return cfg_get(key, fallback)
+
+
 def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: str | None) -> str:
     """Load master resume text from a file, LinkedIn URL, or LinkedIn export."""
     sources = [s for s in [master, linkedin_url, linkedin_export] if s]
@@ -51,8 +58,17 @@ def main():
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option("--output", default="tailored-resume.md", help="Output file path")
-@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
-@click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--format",
+    "fmt",
+    default=lambda: _cfg_default("format", "md"),
+    type=click.Choice(["md", "pdf"]),
+)
 @click.option(
     "--interactive",
     "interactive",
@@ -61,7 +77,9 @@ def main():
     help="Ask gap-filling questions before tailoring",
 )
 @click.option(
-    "--template", default=None, help="Resume template/style (run `templates list` to see options)"
+    "--template",
+    default=lambda: _cfg_default("template"),
+    help="Resume template/style (run `templates list` to see options)",
 )
 def tailor(
     master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
@@ -133,8 +151,17 @@ def tailor(
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option("--output", default="cover-letter.md", help="Output file path")
-@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
-@click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--format",
+    "fmt",
+    default=lambda: _cfg_default("format", "md"),
+    type=click.Choice(["md", "pdf"]),
+)
 @click.option(
     "--interactive",
     "interactive",
@@ -144,7 +171,7 @@ def tailor(
 )
 @click.option(
     "--template",
-    default=None,
+    default=lambda: _cfg_default("template"),
     help="Cover letter template/style (run `templates list` to see options)",
 )
 def cover(
@@ -207,11 +234,20 @@ def cover(
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option("--outdir", default="./application", help="Output directory")
-@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
-@click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--format",
+    "fmt",
+    default=lambda: _cfg_default("format", "md"),
+    type=click.Choice(["md", "pdf"]),
+)
 @click.option(
     "--template",
-    default=None,
+    default=lambda: _cfg_default("template"),
     help="Resume/cover letter template/style (run `templates list` to see options)",
 )
 def package(master, linkedin_url, linkedin_export, job, job_url, outdir, model, fmt, template):
@@ -364,10 +400,21 @@ def ats(resume, job, job_url, tailored, top):
     "--manifest", default=None, help="JSON manifest file listing jobs (see docs for format)"
 )
 @click.option("--outdir", default="./batch-output", show_default=True, help="Root output directory")
-@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
-@click.option("--format", "fmt", default="md", type=click.Choice(["md", "pdf"]))
 @click.option(
-    "--template", default=None, help="Resume template/style (run `templates list` to see options)"
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--format",
+    "fmt",
+    default=lambda: _cfg_default("format", "md"),
+    type=click.Choice(["md", "pdf"]),
+)
+@click.option(
+    "--template",
+    default=lambda: _cfg_default("template"),
+    help="Resume template/style (run `templates list` to see options)",
 )
 @click.option(
     "--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job"
@@ -439,7 +486,11 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
 @click.option(
     "--output", default="master-resume.md", show_default=True, help="Output markdown file path"
 )
-@click.option("--model", default="ollama", type=click.Choice(["ollama", "openai", "anthropic"]))
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
 @click.option("--stdin", "from_stdin", is_flag=True, default=False, help="Read raw text from stdin")
 def import_resume(text_file, output, model, from_stdin):
     """Convert raw resume text to a structured master resume markdown.
@@ -582,3 +633,99 @@ def templates_show(name):
 
 if __name__ == "__main__":
     main()
+
+
+@main.group()
+def config():
+    """Manage resume-engine persistent configuration.
+
+    \b
+    Set defaults so you don't repeat --model, --format, etc. on every command.
+
+    \b
+    Examples:
+      resume-engine config set model openai
+      resume-engine config set format pdf
+      resume-engine config get model
+      resume-engine config list
+      resume-engine config unset model
+    """
+    pass
+
+
+@config.command("list")
+def config_list():
+    """Show all current config values."""
+    from rich.table import Table
+
+    from .config import CONFIG_FILE, VALID_KEYS, load
+
+    data = load()
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Key", style="bold", width=12)
+    table.add_column("Value", width=20)
+    table.add_column("Allowed Values")
+
+    for key in VALID_KEYS:
+        val = data.get(key, "[dim]not set[/dim]")
+        allowed = VALID_KEYS[key]
+        allowed_str = " | ".join(allowed) if allowed else "[dim]any string[/dim]"
+        table.add_row(key, str(val), allowed_str)
+
+    console.print(table)
+    console.print(f"\n[dim]Config file: {CONFIG_FILE}[/dim]")
+
+
+@config.command("get")
+@click.argument("key")
+def config_get(key):
+    """Get a single config value."""
+    from .config import VALID_KEYS, get
+
+    if key not in VALID_KEYS:
+        console.print(f"[red]Unknown key '{key}'. Valid keys: {', '.join(VALID_KEYS)}[/red]")
+        raise SystemExit(1)
+    val = get(key)
+    if val is None:
+        console.print(f"[dim]{key} is not set[/dim]")
+    else:
+        console.print(f"{key} = {val}")
+
+
+@config.command("set")
+@click.argument("key")
+@click.argument("value")
+def config_set(key, value):
+    """Set a config key to a value."""
+    from .config import set_value
+
+    try:
+        set_value(key, value)
+    except ValueError as e:
+        console.print(f"[red]{e}[/red]")
+        raise SystemExit(1)
+    console.print(f"[green]Set {key} = {value}[/green]")
+
+
+@config.command("unset")
+@click.argument("key")
+def config_unset(key):
+    """Remove a config key (revert to built-in default)."""
+    from .config import unset_value
+
+    removed = unset_value(key)
+    if removed:
+        console.print(f"[green]Unset {key}[/green]")
+    else:
+        console.print(f"[dim]{key} was not set[/dim]")
+
+
+@config.command("reset")
+@click.confirmation_option(prompt="This will delete all your resume-engine config. Continue?")
+def config_reset():
+    """Remove all config and revert to built-in defaults."""
+    from .config import reset
+
+    reset()
+    console.print("[green]Config reset.[/green]")
