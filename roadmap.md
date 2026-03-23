@@ -17,6 +17,8 @@
 9. ~~GitHub Actions CI (tests + lint)~~ (done)
 10. ~~Documentation site with tutorials~~ (done)
 
+11. ~~Persistent config (`resume-engine config set model openai`) -- save defaults, skip repeated flags~~ (done)
+
 ## Constraints
 - Python 3.9+, minimal dependencies
 - Local-first (Ollama default, no API key required for basic usage)
