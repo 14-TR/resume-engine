@@ -635,6 +635,135 @@ if __name__ == "__main__":
     main()
 
 
+
+@main.command("diff")
+@click.argument("original", type=click.Path(exists=True))
+@click.argument("tailored", type=click.Path(exists=True))
+@click.option("--unified", "show_unified", is_flag=True, default=False, help="Show raw unified diff output")
+@click.option("--sections", "show_sections", is_flag=True, default=True, help="Show section-by-section summary (default)")
+def diff_cmd(original, tailored, show_unified, show_sections):
+    """Show a diff between original and tailored resume.
+
+    Highlights what changed section by section so you can see what the AI
+    added, removed, or restructured.
+
+    \b
+    Examples:
+      resume-engine diff master-resume.md tailored-resume.md
+      resume-engine diff master-resume.md tailored-resume.md --unified
+    """
+    from rich.table import Table
+    from rich.text import Text
+
+    from .differ import compute_diff
+
+    with open(original) as f:
+        orig_text = f.read()
+    with open(tailored) as f:
+        tail_text = f.read()
+
+    result = compute_diff(orig_text, tail_text)
+
+    console.print("")
+    console.print(
+        Panel(
+            f"[bold]Comparing:[/bold] {original}  [dim]vs[/dim]  {tailored}",
+            style="blue",
+        )
+    )
+
+    # Overall stats
+    score = result.change_score
+    if score >= 60:
+        score_style = "bold green"
+    elif score >= 25:
+        score_style = "bold yellow"
+    else:
+        score_style = "bold cyan"
+
+    console.print(
+        f"\n[bold]Overall change:[/bold]  [{score_style}]{score}%[/{score_style}] of original content modified"
+        f"  [green]+{result.added_lines} lines added[/green]  [red]-{result.removed_lines} lines removed[/red]"
+    )
+
+    # Section table
+    changed_sections = [s for s in result.sections if s.is_changed]
+    unchanged_sections = [s for s in result.sections if not s.is_changed]
+
+    if changed_sections:
+        console.print("")
+        table = Table(
+            title="Changed Sections",
+            show_header=True,
+            header_style="bold cyan",
+        )
+        table.add_column("Section", style="bold", width=24)
+        table.add_column("Change", width=8)
+        table.add_column("+Added", style="green", width=8)
+        table.add_column("-Removed", style="red", width=10)
+        table.add_column("Preview", min_width=40)
+
+        for sec in changed_sections:
+            pct_str = f"{sec.change_pct}%"
+            if sec.change_pct >= 60:
+                pct_style = "bold green"
+            elif sec.change_pct >= 25:
+                pct_style = "yellow"
+            else:
+                pct_style = "cyan"
+
+            # Preview: first added line (truncated)
+            preview = ""
+            if sec.added:
+                line = sec.added[0].strip()
+                if line:
+                    preview = line[:60] + ("..." if len(line) > 60 else "")
+
+            table.add_row(
+                sec.name,
+                f"[{pct_style}]{pct_str}[/{pct_style}]",
+                str(len(sec.added)),
+                str(len(sec.removed)),
+                f"[dim]{preview}[/dim]",
+            )
+
+        console.print(table)
+
+    if unchanged_sections:
+        names = ", ".join(s.name for s in unchanged_sections)
+        console.print(f"\n[dim]Unchanged sections: {names}[/dim]")
+
+    # Detailed line-level output for each changed section
+    if show_sections and not show_unified:
+        for sec in changed_sections:
+            console.print(f"\n[bold cyan]--- {sec.name} ---[/bold cyan]")
+            for line in sec.removed:
+                stripped = line.rstrip()
+                if stripped:
+                    console.print(f"[red]- {stripped}[/red]")
+            for line in sec.added:
+                stripped = line.rstrip()
+                if stripped:
+                    console.print(f"[green]+ {stripped}[/green]")
+
+    # Raw unified diff
+    if show_unified:
+        console.print("\n[bold]Unified diff:[/bold]")
+        for line in result.unified_diff:
+            if line.startswith("+++") or line.startswith("---"):
+                console.print(f"[bold]{line}[/bold]")
+            elif line.startswith("+"):
+                console.print(f"[green]{line}[/green]")
+            elif line.startswith("-"):
+                console.print(f"[red]{line}[/red]")
+            elif line.startswith("@@"):
+                console.print(f"[cyan]{line}[/cyan]")
+            else:
+                console.print(f"[dim]{line}[/dim]")
+
+    console.print("")
+
+
 @main.group()
 def config():
     """Manage resume-engine persistent configuration.
