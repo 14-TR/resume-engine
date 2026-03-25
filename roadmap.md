@@ -18,6 +18,7 @@
 10. ~~Documentation site with tutorials~~ (done)
 
 11. ~~Persistent config (`resume-engine config set model openai`) -- save defaults, skip repeated flags~~ (done)
+12. ~~Resume quality scorer (`resume-engine score resume.md`) -- instant 0-100 health score, 5 dimensions, actionable suggestions, no LLM required~~ (done)
 
 ## Constraints
 - Python 3.9+, minimal dependencies

@@ -631,8 +631,6 @@ def templates_show(name):
     console.print("")
 
 
-if __name__ == "__main__":
-    main()
 
 
 
@@ -858,3 +856,105 @@ def config_reset():
 
     reset()
     console.print("[green]Config reset.[/green]")
+
+
+@main.command("score")
+@click.argument("resume", type=click.Path(exists=True))
+@click.option("--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)")
+def score_cmd(resume, brief):
+    """Score a resume's overall quality (0-100) across 5 dimensions.
+
+    Checks section completeness, quantified achievements, action verb usage,
+    length, and filler language. No LLM required -- runs instantly.
+
+    \b
+    Examples:
+      resume-engine score master-resume.md
+      resume-engine score tailored.md --brief
+    """
+    from rich.table import Table
+
+    from .scorer import score_resume
+
+    with open(resume) as f:
+        text = f.read()
+
+    result = score_resume(text)
+
+    console.print("")
+    console.print(Panel(f"[bold]Resume Quality Score[/bold]   {resume}", style="blue"))
+
+    # Grade band
+    total = result.total
+    if total >= 85:
+        grade = "A"
+        grade_style = "bold green"
+        grade_label = "Excellent"
+    elif total >= 70:
+        grade = "B"
+        grade_style = "bold cyan"
+        grade_label = "Good"
+    elif total >= 50:
+        grade = "C"
+        grade_style = "bold yellow"
+        grade_label = "Needs work"
+    else:
+        grade = "D"
+        grade_style = "bold red"
+        grade_label = "Significant gaps"
+
+    console.print(
+        f"\n  Overall score: [{grade_style}]{total}/100  Grade {grade}  {grade_label}[/{grade_style}]"
+        f"   ({result.word_count} words)\n"
+    )
+
+    if brief:
+        return
+
+    # Dimension table
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Dimension", style="bold", width=26)
+    table.add_column("Score", width=10)
+    table.add_column("Max", width=6)
+    table.add_column("Bar", width=20)
+
+    for dim in result.dimensions:
+        bar_filled = int(dim.pct / 5)
+        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
+        table.add_row(
+            dim.name,
+            f"[{pct_style}]{dim.score}[/{pct_style}]",
+            str(dim.max_score),
+            bar,
+        )
+
+    console.print(table)
+
+    # Stats row
+    console.print(
+        f"\n  Sections found: [green]{', '.join(result.found_sections) or 'none'}[/green]"
+    )
+    if result.missing_sections:
+        console.print(
+            f"  Missing sections: [red]{', '.join(result.missing_sections)}[/red]"
+        )
+    console.print(
+        f"  Quantified bullets: [cyan]{result.quantified_count}/{result.bullet_count}[/cyan]"
+        f"   Action verbs: [cyan]{result.action_verb_count}[/cyan]"
+    )
+
+    # Suggestions
+    all_suggestions = [s for dim in result.dimensions for s in dim.suggestions]
+    if all_suggestions:
+        console.print("\n  [bold yellow]Suggestions:[/bold yellow]")
+        for i, sug in enumerate(all_suggestions, 1):
+            console.print(f"  [yellow]{i}.[/yellow] {sug}")
+    else:
+        console.print("\n  [bold green]No major issues found![/bold green]")
+
+    console.print("")
+
+
+if __name__ == "__main__":
+    main()
