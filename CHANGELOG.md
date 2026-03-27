@@ -1,25 +1,29 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-03-27
 
 ### Added
-- `resume-engine optimize` command -- LLM-powered generic resume improvement without a target job posting
+- `resume-engine config` command - persistent configuration system
+  - Save defaults for model, format, template, output directory
+  - `config set/get/unset/list/reset` subcommands
+  - 25 tests covering config module and CLI
+- `resume-engine score` command - resume quality scoring (0-100)
+  - Scores across 5 dimensions: structure, readability, metrics, keywords, impact
+  - Provides actionable improvement suggestions
+  - 37 tests covering scorer module and CLI
+- `resume-engine diff` command - section-aware resume comparison
+  - Shows which sections changed between original and tailored resume
+  - Line counts and change statistics
+  - 20 tests covering differ module and CLI
+- `resume-engine optimize` command - LLM-powered resume improvement without job posting
   - Strengthens weak bullet points with action verbs
-  - Replaces filler language ("responsible for", "helped with", etc.) with direct phrasing
-  - Flags bullets missing quantified metrics with `[ADD METRIC]` placeholders
-  - `--explain` flag: asks LLM to summarize exactly what changed
-  - `--diff` flag: shows section-level diff table of before/after
-  - `--format pdf` support via pandoc
-- 11 new tests covering the optimizer module and CLI command
-
-
-### Added
-- Troubleshooting and FAQ page in documentation site
-- Changelog page in documentation site nav
-- `resume-engine import` command -- converts any raw resume text (LinkedIn copy-paste, PDF export, old resumes) into a structured master resume markdown
-- 12 new tests covering the import module and CLI command
-- README documentation for the LinkedIn/import workflow
-
+  - Replaces filler language with direct phrasing
+  - Flags bullets missing quantified metrics with [ADD METRIC] placeholders
+  - --explain flag: asks LLM to summarize what changed
+  - --diff flag: shows section-level diff table of before/after
+  - --format pdf support via pandoc
+  - 11 tests covering optimizer module and CLI
+- Total: 93 new tests across new commands (223 total tests)
 
 ## [0.2.0] - 2026-03-12
 
@@ -31,6 +35,9 @@
 - GitHub Actions publish workflow (`publish.yml`) - triggers on `v*.*.*` tags using PyPI Trusted Publishing
 - PyPI, CI, and license badges in README
 - Contributing / Releasing section in README
+- `resume-engine import` command - convert raw resume text to structured master resume markdown
+- Troubleshooting and FAQ page in documentation site
+- Changelog page in documentation site nav
 
 ## [0.1.0] - 2026-03-10
 
