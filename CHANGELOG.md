@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- `resume-engine optimize` command -- LLM-powered generic resume improvement without a target job posting
+  - Strengthens weak bullet points with action verbs
+  - Replaces filler language ("responsible for", "helped with", etc.) with direct phrasing
+  - Flags bullets missing quantified metrics with `[ADD METRIC]` placeholders
+  - `--explain` flag: asks LLM to summarize exactly what changed
+  - `--diff` flag: shows section-level diff table of before/after
+  - `--format pdf` support via pandoc
+- 11 new tests covering the optimizer module and CLI command
+
+
+### Added
 - Troubleshooting and FAQ page in documentation site
 - Changelog page in documentation site nav
 - `resume-engine import` command -- converts any raw resume text (LinkedIn copy-paste, PDF export, old resumes) into a structured master resume markdown

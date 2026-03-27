@@ -956,5 +956,115 @@ def score_cmd(resume, brief):
     console.print("")
 
 
+
+@main.command("optimize")
+@click.argument("resume", type=click.Path(exists=True))
+@click.option("--output", default=None, help="Output file path (default: <resume>-optimized.md)")
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--format",
+    "fmt",
+    default=lambda: _cfg_default("format", "md"),
+    type=click.Choice(["md", "pdf"]),
+)
+@click.option("--explain", "show_explain", is_flag=True, default=False, help="Show a summary of changes made")
+@click.option("--diff", "show_diff", is_flag=True, default=False, help="Show section diff after optimizing")
+def optimize(resume, output, model, fmt, show_explain, show_diff):
+    """Improve a resume without targeting a specific job.
+
+    Uses the LLM to strengthen bullet points, remove filler language, flag
+    missing metrics, and tighten phrasing -- without changing any facts.
+
+    \b
+    Examples:
+      resume-engine optimize master-resume.md
+      resume-engine optimize master-resume.md --output stronger.md --model openai
+      resume-engine optimize master-resume.md --explain
+      resume-engine optimize master-resume.md --diff
+    """
+    import os
+
+    from .optimizer import explain_changes, optimize_resume
+
+    with open(resume) as f:
+        original_text = f.read()
+
+    console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
+    console.print(f"[dim]Input: {len(original_text)} chars -- optimizing with {model}...[/dim]")
+
+    improved_text = optimize_resume(original_text, model=model)
+
+    # Determine output path
+    if output is None:
+        base, _ = os.path.splitext(resume)
+        md_output = f"{base}-optimized.md"
+    else:
+        md_output = output if output.endswith(".md") else output
+
+    with open(md_output, "w") as f:
+        f.write(improved_text)
+    console.print(f"[green]Optimized resume written to {md_output}[/green]")
+
+    # Show explanation of changes
+    if show_explain:
+        console.print("\n[bold cyan]Changes made:[/bold cyan]")
+        console.print("[dim]Asking LLM to explain changes...[/dim]")
+        explanation = explain_changes(original_text, improved_text, model=model)
+        console.print(explanation)
+        console.print("")
+
+    # Show diff
+    if show_diff:
+        from .differ import compute_diff
+        from rich.table import Table
+
+        result = compute_diff(original_text, improved_text)
+        changed = [s for s in result.sections if s.is_changed]
+
+        if changed:
+            table = Table(show_header=True, header_style="bold cyan")
+            table.add_column("Section", style="bold", width=24)
+            table.add_column("Change", width=8)
+            table.add_column("+Added", style="green", width=8)
+            table.add_column("-Removed", style="red", width=10)
+
+            for sec in changed:
+                pct_str = f"{sec.change_pct}%"
+                if sec.change_pct >= 60:
+                    pct_style = "bold green"
+                elif sec.change_pct >= 25:
+                    pct_style = "yellow"
+                else:
+                    pct_style = "cyan"
+                table.add_row(
+                    sec.name,
+                    f"[{pct_style}]{pct_str}[/{pct_style}]",
+                    str(len(sec.added)),
+                    str(len(sec.removed)),
+                )
+
+            console.print("")
+            console.print(table)
+        else:
+            console.print("[dim]No section-level changes detected.[/dim]")
+
+    if fmt == "pdf":
+        from .pdf import markdown_to_pdf, md_path_to_pdf_path
+
+        pdf_output = md_path_to_pdf_path(md_output)
+        try:
+            console.print("[dim]Converting to PDF via pandoc...[/dim]")
+            markdown_to_pdf(md_output, pdf_output)
+            console.print(f"[green]PDF written to {pdf_output}[/green]")
+        except RuntimeError as e:
+            console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+
+    console.print("")
+
+
 if __name__ == "__main__":
     main()
