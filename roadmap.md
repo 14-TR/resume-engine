@@ -20,6 +20,7 @@
 11. ~~Persistent config (`resume-engine config set model openai`) -- save defaults, skip repeated flags~~ (done)
 12. ~~Resume quality scorer (`resume-engine score resume.md`) -- instant 0-100 health score, 5 dimensions, actionable suggestions, no LLM required~~ (done)
 13. ~~Resume optimizer (`resume-engine optimize resume.md`) -- LLM-powered generic improvement: strengthen bullets, remove filler, flag missing metrics, no job posting required~~ (done)
+14. ~~Interview prep generator (`resume-engine interview`) -- predict likely questions (Behavioral, Technical, Culture Fit, Resume Deep-Dive) with STAR-method answer frameworks tailored to the candidate's real experience~~ (done)
 
 ## Constraints
 - Python 3.9+, minimal dependencies
