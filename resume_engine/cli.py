@@ -1068,3 +1068,161 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 
 if __name__ == "__main__":
     main()
+
+@main.command("fit")
+@click.option("--master", default=None, help="Path to master resume (markdown)")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
+@click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
+@click.option("--job", default=None, help="Path to job posting text file")
+@click.option("--job-url", default=None, help="URL of job posting to scrape")
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option("--brief", is_flag=True, default=False, help="Show score and verdict only")
+@click.option(
+    "--output", default=None,
+    help="Save full fit report to a markdown file",
+)
+def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output):
+    """Score how well you fit a job posting (0-100) before applying.
+
+    Combines ATS keyword analysis with LLM-powered evaluation of skills
+    coverage, seniority match, and domain fit. Gives a clear recommendation:
+    Apply, Apply with caution, or Skip.
+
+    \b
+    Examples:
+      resume-engine fit --master resume.md --job posting.txt
+      resume-engine fit --master resume.md --job-url https://example.com/jobs/123
+      resume-engine fit --master resume.md --job posting.txt --model openai --output report.md
+    """
+    from .fit import assess_fit
+
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
+    console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
+
+    master_text = _load_master(master, linkedin_url, linkedin_export)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+        job_text = scrape_job_posting(job_url)
+
+    console.print(f"[dim]Running fit analysis with {model}...[/dim]")
+
+    result = assess_fit(master_text, job_text, model=model)
+
+    # Recommendation style
+    REC_STYLES = {
+        "Apply": ("bold green", "green"),
+        "Apply with caution": ("bold yellow", "yellow"),
+        "Skip": ("bold red", "red"),
+    }
+    rec_bold, rec_color = REC_STYLES.get(result.recommendation, ("bold white", "white"))
+
+    # Total score style
+    total = result.total
+    if total >= 80:
+        total_style = "bold green"
+    elif total >= 65:
+        total_style = "bold cyan"
+    elif total >= 45:
+        total_style = "bold yellow"
+    else:
+        total_style = "bold red"
+
+    console.print("")
+    console.print(
+        f"  Fit score:       [{total_style}]{total}/100  {result.verdict}[/{total_style}]"
+    )
+    console.print(
+        f"  Recommendation:  [{rec_bold}]{result.recommendation}[/{rec_bold}]"
+    )
+    console.print(
+        f"  ATS keyword match: [dim]{result.ats_score}%[/dim]"
+    )
+
+    if brief:
+        if result.verdict:
+            console.print(f"\n  [dim]{result.verdict}[/dim]")
+        console.print("")
+        return
+
+    # Dimension breakdown
+    from rich.table import Table
+
+    console.print("")
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Dimension", style="bold", width=28)
+    table.add_column("Score", width=8)
+    table.add_column("Max", width=6)
+    table.add_column("Bar", width=20)
+
+    for dim in result.dimensions:
+        bar_filled = int(dim.pct / 5)
+        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
+        table.add_row(
+            dim.name,
+            f"[{pct_style}]{dim.score}[/{pct_style}]",
+            str(dim.max_score),
+            bar,
+        )
+
+    console.print(table)
+
+    # Strengths
+    if result.strengths:
+        console.print("\n  [bold green]Strengths:[/bold green]")
+        for s in result.strengths:
+            console.print(f"    [green]+[/green] {s}")
+
+    # Gaps
+    if result.gaps:
+        console.print("\n  [bold red]Gaps / Risks:[/bold red]")
+        for g in result.gaps:
+            console.print(f"    [red]-[/red] {g}")
+
+    # Verdict sentence
+    if result.verdict:
+        console.print(f"\n  [bold]Verdict:[/bold] [{rec_color}]{result.verdict}[/{rec_color}]")
+
+    console.print("")
+
+    # Save report
+    if output:
+        md_lines = [
+            "# Job Fit Report\n",
+            f"**Fit Score:** {result.total}/100 -- {result.verdict}\n",
+            f"**Recommendation:** {result.recommendation}\n",
+            f"**ATS Keyword Match:** {result.ats_score}%\n",
+            "\n## Dimension Scores\n",
+        ]
+        for dim in result.dimensions:
+            md_lines.append(f"- **{dim.name}:** {dim.score}/{dim.max_score} ({dim.pct}%)\n")
+
+        if result.strengths:
+            md_lines.append("\n## Strengths\n")
+            for s in result.strengths:
+                md_lines.append(f"- {s}\n")
+
+        if result.gaps:
+            md_lines.append("\n## Gaps / Risks\n")
+            for g in result.gaps:
+                md_lines.append(f"- {g}\n")
+
+        if result.verdict:
+            md_lines.append(f"\n## Verdict\n{result.verdict}\n")
+
+        with open(output, "w") as f:
+            f.writelines(md_lines)
+        console.print(f"[green]Fit report saved to {output}[/green]")
+        console.print("")
