@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from resume_engine.fit import (
     FitDimension,
     FitResult,
@@ -16,7 +14,6 @@ from resume_engine.fit import (
     _verdict_from_score,
     assess_fit,
 )
-
 
 SAMPLE_RESUME = """# Jane Smith
 jane@example.com | (555) 555-1234
@@ -269,11 +266,18 @@ class TestAssessFit:
     def test_model_forwarded_to_llm(self):
         with patch("resume_engine.fit.complete", return_value=SAMPLE_LLM_RESPONSE) as mock:
             assess_fit(SAMPLE_RESUME, SAMPLE_JOB, model="openai")
-        assert mock.call_args[1].get("model") == "openai" or (len(mock.call_args[0]) > 1 and mock.call_args[0][1] == "openai")
+        assert mock.call_args[1].get("model") == "openai" or (
+            len(mock.call_args[0]) > 1 and mock.call_args[0][1] == "openai"
+        )
 
     def test_total_never_exceeds_100(self):
         # Simulate inflated scores
-        inflated = SAMPLE_LLM_RESPONSE.replace("22/25", "25/25").replace("18/20", "20/20").replace("12/15", "15/15").replace("17/20", "20/20")
+        inflated = (
+            SAMPLE_LLM_RESPONSE.replace("22/25", "25/25")
+            .replace("18/20", "20/20")
+            .replace("12/15", "15/15")
+            .replace("17/20", "20/20")
+        )
         with patch("resume_engine.fit.complete", return_value=inflated):
             result = assess_fit(SAMPLE_RESUME, SAMPLE_JOB)
         assert result.total <= 100
@@ -291,6 +295,7 @@ class TestAssessFit:
 class TestFitCLI:
     def test_fit_command_exists(self):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         runner = CliRunner()
@@ -301,6 +306,7 @@ class TestFitCLI:
 
     def test_requires_job_or_job_url(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -313,6 +319,7 @@ class TestFitCLI:
 
     def test_basic_invocation(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -350,6 +357,7 @@ class TestFitCLI:
 
     def test_brief_mode(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -386,6 +394,7 @@ class TestFitCLI:
 
     def test_output_file_written(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -417,9 +426,12 @@ class TestFitCLI:
                 main,
                 [
                     "fit",
-                    "--master", str(resume_file),
-                    "--job", str(job_file),
-                    "--output", str(out_file),
+                    "--master",
+                    str(resume_file),
+                    "--job",
+                    str(job_file),
+                    "--output",
+                    str(out_file),
                 ],
             )
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from .ats import analyze as ats_analyze
 from .llm import complete
@@ -41,8 +41,8 @@ class FitDimension:
 class FitResult:
     total: int
     dimensions: List[FitDimension]
-    verdict: str            # "Strong fit" | "Moderate fit" | "Stretch role" | "Poor fit"
-    recommendation: str     # "Apply" | "Apply with caution" | "Skip"
+    verdict: str  # "Strong fit" | "Moderate fit" | "Stretch role" | "Poor fit"
+    recommendation: str  # "Apply" | "Apply with caution" | "Skip"
     strengths: List[str]
     gaps: List[str]
     raw_analysis: str
@@ -108,6 +108,7 @@ JOB POSTING:
 # ---------------------------------------------------------------------------
 # Parsing
 # ---------------------------------------------------------------------------
+
 
 def _parse_score(text: str, label: str, max_pts: int) -> int:
     """Extract a score like 'Score: 18/25' from LLM output."""
@@ -179,7 +180,11 @@ def _notes_from_text(raw: str, section_label: str) -> List[str]:
     m = re.search(pattern, raw, re.DOTALL)
     if not m:
         return []
-    lines = [l.strip() for l in m.group(1).splitlines() if l.strip() and not l.strip().startswith("Score")]
+    lines = [
+        ln.strip()
+        for ln in m.group(1).splitlines()
+        if ln.strip() and not ln.strip().startswith("Score")
+    ]
     return lines[:3]
 
 

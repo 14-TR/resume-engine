@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from resume_engine.scorer import (
     ScorerResult,
     _count_action_verbs,
@@ -14,10 +12,10 @@ from resume_engine.scorer import (
     score_resume,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper tests
 # ---------------------------------------------------------------------------
+
 
 class TestExtractSectionHeadings:
     def test_markdown_headings(self):
@@ -230,10 +228,13 @@ class TestScoreResume:
 # CLI integration (no LLM)
 # ---------------------------------------------------------------------------
 
+
 class TestScoreCLI:
     def test_score_command_help(self, tmp_path):
         """score --help returns zero exit code."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         result = subprocess.run(
             [sys.executable, "-m", "resume_engine.cli", "score", "--help"],
             capture_output=True,
@@ -245,7 +246,9 @@ class TestScoreCLI:
 
     def test_score_command_runs(self, tmp_path):
         """score command runs on a temp file."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         resume = tmp_path / "resume.md"
         resume.write_text(GOOD_RESUME)
         result = subprocess.run(
@@ -259,7 +262,9 @@ class TestScoreCLI:
 
     def test_score_brief_flag(self, tmp_path):
         """--brief flag produces shorter output without table."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         resume = tmp_path / "resume.md"
         resume.write_text(GOOD_RESUME)
         result = subprocess.run(

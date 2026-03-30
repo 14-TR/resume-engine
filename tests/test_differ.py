@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from resume_engine.differ import ResumeDiff, SectionDiff, _split_sections, compute_diff
-
 
 MASTER = """\
 # Alex Rivera
@@ -150,7 +147,9 @@ class TestIdenticalDiff:
 
 class TestSectionDiff:
     def test_is_changed_true_when_lines(self):
-        sd = SectionDiff(name="Skills", added=["Python"], removed=[], changed_lines=1, total_lines=3)
+        sd = SectionDiff(
+            name="Skills", added=["Python"], removed=[], changed_lines=1, total_lines=3
+        )
         assert sd.is_changed is True
 
     def test_is_changed_false_when_empty(self):
@@ -173,6 +172,7 @@ class TestSectionDiff:
 class TestCLIDiff:
     def test_diff_command_help(self):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         runner = CliRunner()
@@ -183,6 +183,7 @@ class TestCLIDiff:
 
     def test_diff_command_runs_on_files(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         orig = tmp_path / "original.md"
@@ -197,6 +198,7 @@ class TestCLIDiff:
 
     def test_diff_command_identical_files(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         orig = tmp_path / "original.md"
@@ -211,6 +213,7 @@ class TestCLIDiff:
 
     def test_diff_unified_flag(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         orig = tmp_path / "original.md"
@@ -225,6 +228,7 @@ class TestCLIDiff:
 
     def test_diff_missing_file_fails(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         orig = tmp_path / "original.md"
