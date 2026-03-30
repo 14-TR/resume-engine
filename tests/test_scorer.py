@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from resume_engine.scorer import (
     ScorerResult,
     _count_action_verbs,
@@ -239,7 +241,7 @@ class TestScoreCLI:
             [sys.executable, "-m", "resume_engine.cli", "score", "--help"],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "quality" in result.stdout.lower() or "score" in result.stdout.lower()
@@ -255,7 +257,7 @@ class TestScoreCLI:
             [sys.executable, "-m", "resume_engine.cli", "score", str(resume)],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "/100" in result.stdout
@@ -271,7 +273,7 @@ class TestScoreCLI:
             [sys.executable, "-m", "resume_engine.cli", "score", str(resume), "--brief"],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "/100" in result.stdout
