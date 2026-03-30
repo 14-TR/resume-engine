@@ -631,14 +631,19 @@ def templates_show(name):
     console.print("")
 
 
-
-
-
 @main.command("diff")
 @click.argument("original", type=click.Path(exists=True))
 @click.argument("tailored", type=click.Path(exists=True))
-@click.option("--unified", "show_unified", is_flag=True, default=False, help="Show raw unified diff output")
-@click.option("--sections", "show_sections", is_flag=True, default=True, help="Show section-by-section summary (default)")
+@click.option(
+    "--unified", "show_unified", is_flag=True, default=False, help="Show raw unified diff output"
+)
+@click.option(
+    "--sections",
+    "show_sections",
+    is_flag=True,
+    default=True,
+    help="Show section-by-section summary (default)",
+)
 def diff_cmd(original, tailored, show_unified, show_sections):
     """Show a diff between original and tailored resume.
 
@@ -651,7 +656,6 @@ def diff_cmd(original, tailored, show_unified, show_sections):
       resume-engine diff master-resume.md tailored-resume.md --unified
     """
     from rich.table import Table
-    from rich.text import Text
 
     from .differ import compute_diff
 
@@ -860,7 +864,9 @@ def config_reset():
 
 @main.command("score")
 @click.argument("resume", type=click.Path(exists=True))
-@click.option("--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)")
+@click.option(
+    "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
+)
 def score_cmd(resume, brief):
     """Score a resume's overall quality (0-100) across 5 dimensions.
 
@@ -920,7 +926,9 @@ def score_cmd(resume, brief):
 
     for dim in result.dimensions:
         bar_filled = int(dim.pct / 5)
-        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        bar = (
+            "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        )
         pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
         table.add_row(
             dim.name,
@@ -936,9 +944,7 @@ def score_cmd(resume, brief):
         f"\n  Sections found: [green]{', '.join(result.found_sections) or 'none'}[/green]"
     )
     if result.missing_sections:
-        console.print(
-            f"  Missing sections: [red]{', '.join(result.missing_sections)}[/red]"
-        )
+        console.print(f"  Missing sections: [red]{', '.join(result.missing_sections)}[/red]")
     console.print(
         f"  Quantified bullets: [cyan]{result.quantified_count}/{result.bullet_count}[/cyan]"
         f"   Action verbs: [cyan]{result.action_verb_count}[/cyan]"
@@ -956,7 +962,6 @@ def score_cmd(resume, brief):
     console.print("")
 
 
-
 @main.command("optimize")
 @click.argument("resume", type=click.Path(exists=True))
 @click.option("--output", default=None, help="Output file path (default: <resume>-optimized.md)")
@@ -971,8 +976,12 @@ def score_cmd(resume, brief):
     default=lambda: _cfg_default("format", "md"),
     type=click.Choice(["md", "pdf"]),
 )
-@click.option("--explain", "show_explain", is_flag=True, default=False, help="Show a summary of changes made")
-@click.option("--diff", "show_diff", is_flag=True, default=False, help="Show section diff after optimizing")
+@click.option(
+    "--explain", "show_explain", is_flag=True, default=False, help="Show a summary of changes made"
+)
+@click.option(
+    "--diff", "show_diff", is_flag=True, default=False, help="Show section diff after optimizing"
+)
 def optimize(resume, output, model, fmt, show_explain, show_diff):
     """Improve a resume without targeting a specific job.
 
@@ -1019,8 +1028,9 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 
     # Show diff
     if show_diff:
-        from .differ import compute_diff
         from rich.table import Table
+
+        from .differ import compute_diff
 
         result = compute_diff(original_text, improved_text)
         changed = [s for s in result.sections if s.is_changed]
@@ -1069,6 +1079,7 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 if __name__ == "__main__":
     main()
 
+
 @main.command("fit")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
 @click.option(
@@ -1084,7 +1095,8 @@ if __name__ == "__main__":
 )
 @click.option("--brief", is_flag=True, default=False, help="Show score and verdict only")
 @click.option(
-    "--output", default=None,
+    "--output",
+    default=None,
     help="Save full fit report to a markdown file",
 )
 def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output):
@@ -1114,6 +1126,7 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
 
     console.print(f"[dim]Running fit analysis with {model}...[/dim]")
@@ -1143,12 +1156,8 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
     console.print(
         f"  Fit score:       [{total_style}]{total}/100  {result.verdict}[/{total_style}]"
     )
-    console.print(
-        f"  Recommendation:  [{rec_bold}]{result.recommendation}[/{rec_bold}]"
-    )
-    console.print(
-        f"  ATS keyword match: [dim]{result.ats_score}%[/dim]"
-    )
+    console.print(f"  Recommendation:  [{rec_bold}]{result.recommendation}[/{rec_bold}]")
+    console.print(f"  ATS keyword match: [dim]{result.ats_score}%[/dim]")
 
     if brief:
         if result.verdict:
@@ -1168,7 +1177,9 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
     for dim in result.dimensions:
         bar_filled = int(dim.pct / 5)
-        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        bar = (
+            "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        )
         pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
         table.add_row(
             dim.name,
