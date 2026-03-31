@@ -21,6 +21,9 @@
 12. ~~Resume quality scorer (`resume-engine score resume.md`) -- instant 0-100 health score, 5 dimensions, actionable suggestions, no LLM required~~ (done)
 13. ~~Resume optimizer (`resume-engine optimize resume.md`) -- LLM-powered generic improvement: strengthen bullets, remove filler, flag missing metrics, no job posting required~~ (done)
 14. ~~Interview prep generator (`resume-engine interview`) -- predict likely questions (Behavioral, Technical, Culture Fit, Resume Deep-Dive) with STAR-method answer frameworks tailored to the candidate's real experience~~ (done)
+15. ~~Cover letter quality scorer (`resume-engine cover-score cover-letter.md`) -- instant 0-100 health score, 5 dimensions (opening hook, company specificity, value proposition, length, filler), no LLM required~~ (done)
+
+16. Application tracker (`resume-engine track`) -- local SQLite log of jobs applied to (company, role, date, status, notes); search and update status from the CLI
 
 ## Constraints
 - Python 3.9+, minimal dependencies
