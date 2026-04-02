@@ -1318,6 +1318,189 @@ def cover_score_cmd(cover_letter, brief):
     console.print("")
 
 
+
+
+@main.group()
+def track():
+    """Track job applications in a local SQLite log.
+
+    \b
+    Commands:
+      add     Log a new application
+      list    Show all applications (with optional filters)
+      update  Update status or notes on an application
+      delete  Remove an application from the log
+      show    Show full details for one application
+      stats   Summary of application pipeline
+    """
+    pass
+
+
+@track.command("add")
+@click.option("--company", required=True, help="Company name")
+@click.option("--role", required=True, help="Job title / role")
+@click.option("--date", "applied_date", default=None, help="Date applied (YYYY-MM-DD, default: today)")
+@click.option(
+    "--status",
+    default="applied",
+    type=click.Choice(["applied", "screening", "interview", "offer", "rejected", "withdrawn"]),
+    show_default=True,
+    help="Application status",
+)
+@click.option("--url", default=None, help="Job posting URL")
+@click.option("--notes", default=None, help="Free-form notes")
+def track_add(company, role, applied_date, status, url, notes):
+    """Log a new job application."""
+    from .tracker import add_application
+
+    app_id = add_application(
+        company=company,
+        role=role,
+        applied_date=applied_date,
+        status=status,
+        url=url,
+        notes=notes,
+    )
+    console.print(f"[green]Application #{app_id} added:[/green] {company} -- {role}  [{status}]")
+
+
+@track.command("list")
+@click.option("--status", default=None, help="Filter by status")
+@click.option("--company", default=None, help="Filter by company name (partial match)")
+@click.option("--limit", default=50, show_default=True, help="Max results to show")
+def track_list(status, company, limit):
+    """Show tracked applications, newest first."""
+    from rich.table import Table
+
+    from .tracker import STATUS_STYLES, list_applications
+
+    rows = list_applications(status=status, company=company, limit=limit)
+
+    if not rows:
+        console.print("[dim]No applications found.[/dim]")
+        return
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("ID", width=5)
+    table.add_column("Company", width=22)
+    table.add_column("Role", width=26)
+    table.add_column("Date", width=12)
+    table.add_column("Status", width=12)
+    table.add_column("Notes", width=30)
+
+    for row in rows:
+        style = STATUS_STYLES.get(row["status"], "white")
+        notes_preview = (row["notes"] or "")[:28] + ("..." if len(row["notes"] or "") > 28 else "")
+        table.add_row(
+            str(row["id"]),
+            row["company"],
+            row["role"],
+            row["date"],
+            f"[{style}]{row['status']}[/{style}]",
+            f"[dim]{notes_preview}[/dim]" if notes_preview else "",
+        )
+
+    console.print(table)
+    console.print(f"[dim]{len(rows)} application(s)[/dim]")
+
+
+@track.command("show")
+@click.argument("app_id", type=int)
+def track_show(app_id):
+    """Show full details for a single application."""
+    from .tracker import STATUS_STYLES, get_application
+
+    row = get_application(app_id)
+    if not row:
+        console.print(f"[red]No application with id {app_id}[/red]")
+        raise SystemExit(1)
+
+    style = STATUS_STYLES.get(row["status"], "white")
+    console.print("")
+    console.print(Panel(
+        f"[bold]#{row['id']}[/bold]  {row['company']}  --  {row['role']}",
+        style="blue",
+    ))
+    console.print(f"  Date applied:  {row['date']}")
+    console.print(f"  Status:        [{style}]{row['status']}[/{style}]")
+    if row.get("url"):
+        console.print(f"  URL:           {row['url']}")
+    if row.get("notes"):
+        console.print(f"  Notes:         {row['notes']}")
+    console.print(f"  Created:       {row['created_at']}")
+    console.print(f"  Updated:       {row['updated_at']}")
+    console.print("")
+
+
+@track.command("update")
+@click.argument("app_id", type=int)
+@click.option(
+    "--status",
+    default=None,
+    type=click.Choice(["applied", "screening", "interview", "offer", "rejected", "withdrawn"]),
+    help="New status",
+)
+@click.option("--notes", default=None, help="Update notes (replaces existing)")
+@click.option("--url", default=None, help="Update job posting URL")
+def track_update(app_id, status, notes, url):
+    """Update status, notes, or URL for an application."""
+    from .tracker import update_application
+
+    if not status and notes is None and url is None:
+        raise click.UsageError("Provide at least one of --status, --notes, --url")
+
+    ok = update_application(app_id, status=status, notes=notes, url=url)
+    if not ok:
+        console.print(f"[red]No application with id {app_id}[/red]")
+        raise SystemExit(1)
+
+    parts = []
+    if status:
+        parts.append(f"status={status}")
+    if notes is not None:
+        parts.append("notes updated")
+    if url is not None:
+        parts.append("url updated")
+    console.print(f"[green]Application #{app_id} updated:[/green] {', '.join(parts)}")
+
+
+@track.command("delete")
+@click.argument("app_id", type=int)
+@click.confirmation_option(prompt="Delete this application from the log?")
+def track_delete(app_id):
+    """Remove an application from the tracker."""
+    from .tracker import delete_application
+
+    ok = delete_application(app_id)
+    if not ok:
+        console.print(f"[red]No application with id {app_id}[/red]")
+        raise SystemExit(1)
+    console.print(f"[green]Application #{app_id} deleted.[/green]")
+
+
+@track.command("stats")
+def track_stats():
+    """Show a summary of your application pipeline."""
+    from .tracker import STATUS_STYLES, VALID_STATUSES, get_stats
+
+    stats = get_stats()
+    total = stats["total"]
+    by_status = stats["by_status"]
+
+    console.print("")
+    console.print(Panel("[bold]Application Tracker -- Pipeline Summary[/bold]", style="blue"))
+    console.print(f"  Total applications tracked: [bold]{total}[/bold]\n")
+
+    for s in VALID_STATUSES:
+        count = by_status.get(s, 0)
+        style = STATUS_STYLES.get(s, "white")
+        bar = "#" * count
+        console.print(f"  [{style}]{s:<12}[/{style}]  {count:>4}  [dim]{bar}[/dim]")
+
+    console.print("")
+
+
+
 if __name__ == "__main__":
     main()
 
