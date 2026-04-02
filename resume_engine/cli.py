@@ -1216,6 +1216,108 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
 
     console.print("")
 
+
+@main.command("cover-score")
+@click.argument("cover_letter", type=click.Path(exists=True))
+@click.option("--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)")
+def cover_score_cmd(cover_letter, brief):
+    """Score a cover letter's quality (0-100) across 5 dimensions.
+
+    Checks opening hook, company/role specificity, value proposition,
+    length, and filler language. No LLM required -- runs instantly.
+
+    \b
+    Examples:
+      resume-engine cover-score cover-letter.md
+      resume-engine cover-score cover-letter.md --brief
+    """
+    from rich.table import Table
+
+    from .cover_scorer import score_cover_letter
+
+    with open(cover_letter) as f:
+        text = f.read()
+
+    result = score_cover_letter(text)
+    console.print("")
+    console.print(Panel(f"[bold]Cover Letter Quality Score[/bold]   {cover_letter}", style="blue"))
+
+    total = result.total
+    if total >= 85:
+        grade = "A"
+        grade_style = "bold green"
+        grade_label = "Excellent"
+    elif total >= 70:
+        grade = "B"
+        grade_style = "bold cyan"
+        grade_label = "Good"
+    elif total >= 50:
+        grade = "C"
+        grade_style = "bold yellow"
+        grade_label = "Needs work"
+    else:
+        grade = "D"
+        grade_style = "bold red"
+        grade_label = "Significant gaps"
+
+    console.print(
+        f"\n  Overall score: [{grade_style}]{total}/100  Grade {grade}  {grade_label}[/{grade_style}]"
+        f"   ({result.word_count} words)\n"
+    )
+
+    if brief:
+        return
+
+    table = Table(show_header=True, header_style="bold cyan")
+    table.add_column("Dimension", style="bold", width=28)
+    table.add_column("Score", width=8)
+    table.add_column("Max", width=6)
+    table.add_column("Bar", width=20)
+
+    for dim in result.dimensions:
+        bar_filled = int(dim.pct / 5)
+        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
+        table.add_row(
+            dim.name,
+            f"[{pct_style}]{dim.score}[/{pct_style}]",
+            str(dim.max_score),
+            bar,
+        )
+
+    console.print(table)
+
+    flags = []
+    if result.has_company_name:
+        flags.append("[green]Company named[/green]")
+    else:
+        flags.append("[red]No company name[/red]")
+    if result.has_role_name:
+        flags.append("[green]Role referenced[/green]")
+    else:
+        flags.append("[red]No role title[/red]")
+    if result.generic_opener:
+        flags.append("[red]Generic opener[/red]")
+    else:
+        flags.append("[green]Strong opener[/green]")
+
+    console.print("\n  " + "   ".join(flags))
+    console.print(
+        f"\n  Value verbs: [cyan]{result.value_verb_count}[/cyan]"
+        f"   Metrics/specifics: [cyan]{result.specificity_count}[/cyan]"
+    )
+
+    all_suggestions = [s for dim in result.dimensions for s in dim.suggestions]
+    if all_suggestions:
+        console.print("\n  [bold yellow]Suggestions:[/bold yellow]")
+        for i, sug in enumerate(all_suggestions, 1):
+            console.print(f"  [yellow]{i}.[/yellow] {sug}")
+    else:
+        console.print("\n  [bold green]No major issues found![/bold green]")
+
+    console.print("")
+
+
 if __name__ == "__main__":
     main()
 
