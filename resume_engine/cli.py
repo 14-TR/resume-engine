@@ -43,7 +43,7 @@ def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: 
 
 
 @click.group()
-@click.version_option(version="0.2.0")
+@click.version_option(version="0.3.1")
 def main():
     """AI-powered resume tailoring CLI."""
     pass
@@ -1075,6 +1075,146 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 
     console.print("")
 
+
+
+
+@main.command("interview")
+@click.option("--master", default=None, help="Path to master resume (markdown)")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
+@click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
+@click.option("--job", default=None, help="Path to job posting text file")
+@click.option("--job-url", default=None, help="URL of job posting to scrape")
+@click.option(
+    "--count", default=10, show_default=True,
+    help="Number of questions to generate (5-20 recommended)"
+)
+@click.option(
+    "--model",
+    default=lambda: _cfg_default("model", "ollama"),
+    type=click.Choice(["ollama", "openai", "anthropic"]),
+)
+@click.option(
+    "--with-followups", "with_followups", is_flag=True, default=False,
+    help="Also generate likely follow-up/probing questions on resume specifics",
+)
+@click.option(
+    "--output", default=None,
+    help="Save prep sheet to a markdown file",
+)
+def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output):
+    """Generate tailored interview questions with STAR-method answer frameworks.
+
+    Analyzes the job posting and your resume to predict likely questions
+    across four categories: Behavioral, Technical, Culture Fit, and
+    Resume Deep-Dives. Each question includes a STAR-method framework
+    tailored to your actual experience.
+
+    \b
+    Examples:
+      resume-engine interview --master resume.md --job posting.txt
+      resume-engine interview --master resume.md --job-url https://example.com/jobs/123 --count 15
+      resume-engine interview --master resume.md --job posting.txt --with-followups --output prep.md
+    """
+    from .interview import generate_interview_prep
+
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
+    console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
+
+    master_text = _load_master(master, linkedin_url, linkedin_export)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+        job_text = scrape_job_posting(job_url)
+
+    console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
+
+    result = generate_interview_prep(
+        master_text,
+        job_text,
+        model=model,
+        count=count,
+        with_followups=with_followups,
+    )
+
+    # Category colors
+    CATEGORY_STYLES = {
+        "behavioral": "bold magenta",
+        "technical": "bold cyan",
+        "culture fit": "bold blue",
+        "resume deep-dive": "bold yellow",
+        "general": "bold white",
+    }
+
+    def cat_style(cat: str) -> str:
+        return CATEGORY_STYLES.get(cat.lower(), "bold white")
+
+    console.print("")
+    console.print(f"[bold]Interview Questions[/bold]  ({len(result.questions)} generated)\n")
+
+    md_lines = ["# Interview Prep\n"]
+    md_lines.append(f"Generated {len(result.questions)} questions.\n")
+
+    if result.questions:
+        # Group by category for display
+        from collections import defaultdict
+        by_cat = defaultdict(list)
+        for q in result.questions:
+            by_cat[q.category].append(q)
+
+        for cat, qs in by_cat.items():
+            style = cat_style(cat)
+            console.print(f"[{style}]== {cat} ==[/{style}]\n")
+            md_lines.append(f"## {cat}\n")
+
+            for q in qs:
+                console.print(f"  [bold]{q.number}.[/bold] {q.question}")
+                md_lines.append(f"### Q{q.number}. {q.question}\n")
+
+                if q.framework:
+                    console.print(f"     [dim]STAR: {q.framework}[/dim]")
+                    md_lines.append(f"**STAR Framework:** {q.framework}\n")
+
+                console.print("")
+                md_lines.append("")
+    else:
+        # Fallback: print raw output if parsing failed
+        console.print(result.raw_questions)
+        md_lines.append(result.raw_questions)
+
+    if result.followups:
+        console.print(f"\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
+        md_lines.append("## Likely Follow-Up Questions\n")
+
+        for fq in result.followups:
+            console.print(f"  [bold]{fq.number}.[/bold] {fq.question}")
+            md_lines.append(f"### FQ{fq.number}. {fq.question}\n")
+
+            if fq.probing:
+                console.print(f"     [dim]Probing: {fq.probing}[/dim]")
+                md_lines.append(f"**Probing:** {fq.probing}\n")
+
+            console.print("")
+            md_lines.append("")
+    elif result.raw_followups:
+        console.print("\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
+        console.print(result.raw_followups)
+        md_lines.append("## Likely Follow-Up Questions\n")
+        md_lines.append(result.raw_followups)
+
+    # Save to file if requested
+    if output:
+        with open(output, "w") as f:
+            f.write("\n".join(md_lines))
+        console.print(f"[green]Interview prep sheet saved to {output}[/green]")
+
+    console.print("")
 
 if __name__ == "__main__":
     main()

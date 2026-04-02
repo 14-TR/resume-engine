@@ -1,3 +1,15 @@
+## [0.3.1] - 2026-03-28
+
+### Added
+- `resume-engine interview` command - LLM-powered interview prep generator
+  - Predicts likely questions across 4 categories: Behavioral, Technical, Culture Fit, Resume Deep-Dive
+  - Each question includes a STAR-method answer framework tailored to the candidate's actual experience
+  - `--count` option to control number of questions (default: 10)
+  - `--with-followups` flag: generates additional probing/follow-up questions targeting resume specifics
+  - `--output` flag: saves full prep sheet to a markdown file
+  - No-fabrication rule enforced in prompt -- frameworks reference real companies/roles only
+  - 24 tests covering parser, module API, and CLI
+
 # Changelog
 
 ## [0.3.0] - 2026-03-27
