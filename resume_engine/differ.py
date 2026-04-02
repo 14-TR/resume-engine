@@ -5,7 +5,7 @@ from __future__ import annotations
 import difflib
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 
 @dataclass
@@ -91,8 +91,8 @@ def compute_diff(original: str, tailored: str) -> ResumeDiff:
     )
 
     # Count totals
-    added = [l for l in unified if l.startswith("+") and not l.startswith("+++")]
-    removed = [l for l in unified if l.startswith("-") and not l.startswith("---")]
+    added = [line for line in unified if line.startswith("+") and not line.startswith("+++")]
+    removed = [line for line in unified if line.startswith("-") and not line.startswith("---")]
 
     # Section-by-section diff
     orig_sections = dict(_split_sections(original))
@@ -115,17 +115,19 @@ def compute_diff(original: str, tailored: str) -> ResumeDiff:
         orig_sec_lines = orig_text.splitlines(keepends=True)
         tail_sec_lines = tail_text.splitlines(keepends=True)
 
-        sec_unified = list(
-            difflib.unified_diff(orig_sec_lines, tail_sec_lines, lineterm="")
-        )
-        sec_added = [l for l in sec_unified if l.startswith("+") and not l.startswith("+++")]
-        sec_removed = [l for l in sec_unified if l.startswith("-") and not l.startswith("---")]
+        sec_unified = list(difflib.unified_diff(orig_sec_lines, tail_sec_lines, lineterm=""))
+        sec_added = [
+            line for line in sec_unified if line.startswith("+") and not line.startswith("+++")
+        ]
+        sec_removed = [
+            line for line in sec_unified if line.startswith("-") and not line.startswith("---")
+        ]
 
         section_diffs.append(
             SectionDiff(
                 name=name,
-                added=[l[1:] for l in sec_added],
-                removed=[l[1:] for l in sec_removed],
+                added=[line[1:] for line in sec_added],
+                removed=[line[1:] for line in sec_removed],
                 changed_lines=len(sec_added) + len(sec_removed),
                 total_lines=max(len(orig_sec_lines), 1),
             )

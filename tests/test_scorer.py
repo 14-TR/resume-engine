@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
 from resume_engine.scorer import (
     ScorerResult,
@@ -14,10 +14,10 @@ from resume_engine.scorer import (
     score_resume,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper tests
 # ---------------------------------------------------------------------------
+
 
 class TestExtractSectionHeadings:
     def test_markdown_headings(self):
@@ -230,43 +230,50 @@ class TestScoreResume:
 # CLI integration (no LLM)
 # ---------------------------------------------------------------------------
 
+
 class TestScoreCLI:
     def test_score_command_help(self, tmp_path):
         """score --help returns zero exit code."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         result = subprocess.run(
             [sys.executable, "-m", "resume_engine.cli", "score", "--help"],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "quality" in result.stdout.lower() or "score" in result.stdout.lower()
 
     def test_score_command_runs(self, tmp_path):
         """score command runs on a temp file."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         resume = tmp_path / "resume.md"
         resume.write_text(GOOD_RESUME)
         result = subprocess.run(
             [sys.executable, "-m", "resume_engine.cli", "score", str(resume)],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "/100" in result.stdout
 
     def test_score_brief_flag(self, tmp_path):
         """--brief flag produces shorter output without table."""
-        import subprocess, sys
+        import subprocess
+        import sys
+
         resume = tmp_path / "resume.md"
         resume.write_text(GOOD_RESUME)
         result = subprocess.run(
             [sys.executable, "-m", "resume_engine.cli", "score", str(resume), "--brief"],
             capture_output=True,
             text=True,
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=str(Path(__file__).parent.parent),
         )
         assert result.returncode == 0
         assert "/100" in result.stdout

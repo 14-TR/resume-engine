@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 # ---------------------------------------------------------------------------
 # Config
@@ -40,17 +40,59 @@ OPTIONAL_SECTIONS = [
 ]
 
 STRONG_ACTION_VERBS = {
-    "achieved", "accelerated", "architected", "automated", "built",
-    "championed", "collaborated", "created", "cut", "decreased",
-    "defined", "delivered", "deployed", "designed", "developed",
-    "drove", "eliminated", "engineered", "established", "exceeded",
-    "executed", "expanded", "facilitated", "generated", "grew",
-    "identified", "implemented", "improved", "increased", "integrated",
-    "launched", "led", "managed", "mentored", "migrated",
-    "negotiated", "optimized", "oversaw", "partnered", "piloted",
-    "planned", "produced", "reduced", "refactored", "resolved",
-    "scaled", "shipped", "simplified", "spearheaded", "streamlined",
-    "trained", "transformed", "unified",
+    "achieved",
+    "accelerated",
+    "architected",
+    "automated",
+    "built",
+    "championed",
+    "collaborated",
+    "created",
+    "cut",
+    "decreased",
+    "defined",
+    "delivered",
+    "deployed",
+    "designed",
+    "developed",
+    "drove",
+    "eliminated",
+    "engineered",
+    "established",
+    "exceeded",
+    "executed",
+    "expanded",
+    "facilitated",
+    "generated",
+    "grew",
+    "identified",
+    "implemented",
+    "improved",
+    "increased",
+    "integrated",
+    "launched",
+    "led",
+    "managed",
+    "mentored",
+    "migrated",
+    "negotiated",
+    "optimized",
+    "oversaw",
+    "partnered",
+    "piloted",
+    "planned",
+    "produced",
+    "reduced",
+    "refactored",
+    "resolved",
+    "scaled",
+    "shipped",
+    "simplified",
+    "spearheaded",
+    "streamlined",
+    "trained",
+    "transformed",
+    "unified",
 }
 
 FILLER_PHRASES = [
@@ -81,6 +123,7 @@ FILLER_PHRASES = [
 # Data types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DimensionResult:
     name: str
@@ -109,6 +152,7 @@ class ScorerResult:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_section_headings(text: str) -> List[str]:
     """Return lowercase section heading names found in text."""
@@ -158,6 +202,7 @@ def _word_count(text: str) -> int:
 # Dimension scorers
 # ---------------------------------------------------------------------------
 
+
 def _score_sections(text: str) -> DimensionResult:
     headings = _extract_section_headings(text)
 
@@ -174,19 +219,23 @@ def _score_sections(text: str) -> DimensionResult:
     suggestions = []
     if missing:
         suggestions.append(
-            f"Missing required section(s): {', '.join(missing)}. "
-            "Add these headings to your resume."
+            f"Missing required section(s): {', '.join(missing)}. Add these headings to your resume."
         )
 
     # Bonus sections (informational only)
     found_optional = [s for s in OPTIONAL_SECTIONS if any(s in h for h in headings)]
 
-    return DimensionResult(
-        name="Section Completeness",
-        score=score,
-        max_score=25,
-        suggestions=suggestions,
-    ), found, missing, found_optional  # type: ignore[return-value]
+    return (
+        DimensionResult(
+            name="Section Completeness",
+            score=score,
+            max_score=25,
+            suggestions=suggestions,
+        ),
+        found,
+        missing,
+        found_optional,
+    )  # type: ignore[return-value]
 
 
 def _score_quantified(text: str) -> DimensionResult:
@@ -321,6 +370,7 @@ def _score_filler(text: str) -> DimensionResult:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def score_resume(text: str) -> ScorerResult:
     """Score a resume and return a ScorerResult."""
