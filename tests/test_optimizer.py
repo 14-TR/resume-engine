@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from resume_engine.optimizer import explain_changes, optimize_resume
-
 
 SAMPLE_RESUME = """# Jane Smith
 jane@example.com | (555) 555-1234
@@ -75,7 +72,9 @@ class TestOptimizerModule:
         original = "- Responsible for building features"
         improved = "- Engineered core features, reducing bug rate by 30%"
 
-        with patch("resume_engine.optimizer.complete", return_value="- Replaced filler verb") as mock_complete:
+        with patch(
+            "resume_engine.optimizer.complete", return_value="- Replaced filler verb"
+        ) as mock_complete:
             result = explain_changes(original, improved, model="openai")
 
         assert result == "- Replaced filler verb"
@@ -99,6 +98,7 @@ class TestOptimizerCLI:
     def test_optimize_command_exists(self):
         """optimize command should be registered."""
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         runner = CliRunner()
@@ -109,6 +109,7 @@ class TestOptimizerCLI:
     def test_optimize_writes_output_file(self, tmp_path):
         """optimize should write the improved resume to an output file."""
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -131,6 +132,7 @@ class TestOptimizerCLI:
     def test_optimize_default_output_filename(self, tmp_path):
         """Without --output, should write <name>-optimized.md."""
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "myresume.md"
@@ -150,6 +152,7 @@ class TestOptimizerCLI:
     def test_optimize_with_diff_flag(self, tmp_path):
         """--diff flag should produce diff output in the terminal."""
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -169,6 +172,7 @@ class TestOptimizerCLI:
     def test_optimize_with_explain_flag(self, tmp_path):
         """--explain flag should call explain_changes and print output."""
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
