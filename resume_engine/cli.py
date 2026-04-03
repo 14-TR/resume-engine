@@ -1501,9 +1501,6 @@ def track_stats():
 
 
 
-if __name__ == "__main__":
-    main()
-
 
 @main.command("fit")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
@@ -1662,3 +1659,149 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
             f.writelines(md_lines)
         console.print(f"[green]Fit report saved to {output}[/green]")
         console.print("")
+
+
+@main.command("init")
+@click.option(
+    "--output",
+    default="master-resume.md",
+    show_default=True,
+    help="Output file path for the master resume",
+)
+def init_cmd(output):
+    """Create a master resume from scratch via guided prompts.
+
+    Walks you through entering your contact info, summary, skills,
+    work experience, education, and certifications step by step.
+    No existing resume file or LLM required.
+
+    \b
+    Examples:
+      resume-engine init
+      resume-engine init --output my-resume.md
+    """
+    import os
+
+    from .init import Education, Experience, ResumeData, render_markdown
+
+    console.print(
+        Panel(
+            "[bold]resume-engine[/bold] -- master resume builder\n"
+            "[dim]Answer the prompts below to build your resume. Press Enter to skip optional fields.[/dim]",
+            style="blue",
+        )
+    )
+
+    data = ResumeData()
+
+    # Contact info
+    console.print("\n[bold cyan]Contact Information[/bold cyan]")
+    data.name = click.prompt("  Full name", type=str)
+    data.email = click.prompt("  Email", type=str, default="", show_default=False)
+    data.phone = click.prompt("  Phone", type=str, default="", show_default=False)
+    data.location = click.prompt("  Location (city, state)", type=str, default="", show_default=False)
+    data.linkedin = click.prompt("  LinkedIn URL", type=str, default="", show_default=False)
+    data.website = click.prompt("  Website/portfolio URL", type=str, default="", show_default=False)
+
+    # Summary
+    console.print("\n[bold cyan]Professional Summary[/bold cyan]")
+    console.print("  [dim]2-3 sentence overview of your background and goals.[/dim]")
+    data.summary = click.prompt("  Summary", type=str, default="", show_default=False)
+
+    # Skills
+    console.print("\n[bold cyan]Skills[/bold cyan]")
+    console.print("  [dim]Enter skills separated by commas (e.g. Python, AWS, Project Management).[/dim]")
+    skills_raw = click.prompt("  Skills", type=str, default="", show_default=False)
+    if skills_raw.strip():
+        data.skills = [s.strip() for s in skills_raw.split(",") if s.strip()]
+
+    # Experience
+    console.print("\n[bold cyan]Work Experience[/bold cyan]")
+    console.print("  [dim]Add positions one at a time. Leave company blank to stop.[/dim]")
+
+    while True:
+        console.print("")
+        company = click.prompt("  Company name (blank to finish)", type=str, default="", show_default=False)
+        if not company.strip():
+            break
+        title = click.prompt("  Job title", type=str)
+        start = click.prompt("  Start date (e.g. Jan 2020)", type=str)
+        end = click.prompt("  End date (e.g. Present)", type=str, default="Present")
+
+        console.print("  [dim]Add bullet points for this role. Leave blank to stop.[/dim]")
+        bullets: list[str] = []
+        while True:
+            bullet = click.prompt(f"    Bullet {len(bullets) + 1}", type=str, default="", show_default=False)
+            if not bullet.strip():
+                break
+            bullets.append(bullet.strip())
+
+        data.experience.append(
+            Experience(company=company.strip(), title=title.strip(), start=start.strip(), end=end.strip(), bullets=bullets)
+        )
+
+    # Education
+    console.print("\n[bold cyan]Education[/bold cyan]")
+    console.print("  [dim]Add degrees one at a time. Leave school blank to stop.[/dim]")
+
+    while True:
+        console.print("")
+        school = click.prompt("  School name (blank to finish)", type=str, default="", show_default=False)
+        if not school.strip():
+            break
+        degree = click.prompt("  Degree (e.g. B.S. Computer Science)", type=str)
+        year = click.prompt("  Year (e.g. 2020)", type=str, default="", show_default=False)
+
+        data.education.append(
+            Education(school=school.strip(), degree=degree.strip(), year=year.strip())
+        )
+
+    # Certifications
+    console.print("\n[bold cyan]Certifications[/bold cyan]")
+    console.print("  [dim]Add certifications one at a time. Leave blank to stop.[/dim]")
+
+    while True:
+        cert = click.prompt("  Certification (blank to finish)", type=str, default="", show_default=False)
+        if not cert.strip():
+            break
+        data.certifications.append(cert.strip())
+
+    # Render and save
+    md = render_markdown(data)
+
+    if os.path.exists(output) and not click.confirm(
+        f"\n  {output} already exists. Overwrite?", default=False
+    ):
+        console.print("[yellow]Aborted.[/yellow]")
+        raise SystemExit(0)
+
+    with open(output, "w") as f:
+        f.write(md)
+
+    console.print(f"\n[bold green]Master resume written to {output}[/bold green]")
+
+    # Quick stats
+    sections = []
+    if data.summary:
+        sections.append("Summary")
+    if data.skills:
+        sections.append("Skills")
+    if data.experience:
+        sections.append(f"Experience ({len(data.experience)} roles)")
+    if data.education:
+        sections.append(f"Education ({len(data.education)} entries)")
+    if data.certifications:
+        sections.append(f"Certifications ({len(data.certifications)})")
+    console.print(f"  [dim]Sections: {', '.join(sections)}[/dim]")
+
+    console.print(
+        "\n[dim]Next steps:[/dim]\n"
+        f"  [dim]1. Review and polish: [bold]{output}[/bold][/dim]\n"
+        "  [dim]2. Score it: [bold]resume-engine score {output}[/bold][/dim]\n"
+        "  [dim]3. Optimize with AI: [bold]resume-engine optimize {output}[/bold][/dim]\n"
+        "  [dim]4. Tailor to a job: [bold]resume-engine tailor --master {output} --job posting.txt[/bold][/dim]\n"
+    )
+
+
+if __name__ == "__main__":
+    main()

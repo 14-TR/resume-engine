@@ -24,6 +24,7 @@
 15. ~~Job fit assessment (`resume-engine fit`) -- composite 0-100 fit score across ATS match, required skills, seniority, and domain; gives Apply / Apply with caution / Skip recommendation before tailoring~~ (done)
 16. ~~Cover letter quality scorer (`resume-engine cover-score cover-letter.md`) -- instant 0-100 health score, 5 dimensions (opening hook, company specificity, value proposition, length, filler), no LLM required~~ (done)
 17. ~~Application tracker (`resume-engine track`) -- local SQLite log of jobs applied to (company, role, date, status, notes); search and update status from the CLI~~ (done)
+18. ~~Interactive resume builder (`resume-engine init`) -- guided setup wizard creates a master resume from scratch via interactive prompts; no existing resume or LLM required~~ (done)
 
 ## Constraints
 - Python 3.9+, minimal dependencies
