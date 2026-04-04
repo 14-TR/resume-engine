@@ -20,6 +20,9 @@ resume-engine package --master resume.md --job posting.txt --outdir ./applicatio
 # Score your resume quality (instant, no LLM)
 resume-engine score resume.md
 
+# Validate a tailored resume before sending
+resume-engine validate --master resume.md --job posting.txt --resume tailored.md
+
 # Track where you've applied
 resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 ```
@@ -80,6 +83,16 @@ Instant cover letter quality score (0-100) across 5 dimensions: opening hook, co
 ```bash
 resume-engine cover-score cover-letter.md
 resume-engine cover-score cover-letter.md --brief
+```
+
+### validate
+
+Grounded trust check for tailored output. Compares a tailored resume and/or cover letter against your master resume plus the job posting, then flags likely unsupported claims, title drift, date drift, company drift, and suspicious rewrites.
+
+```bash
+resume-engine validate --master resume.md --job posting.txt --resume tailored.md
+resume-engine validate --master resume.md --job posting.txt --cover-letter cover-letter.md
+resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover-letter.md --output validation-report.md
 ```
 
 ### optimize

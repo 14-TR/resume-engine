@@ -1661,6 +1661,117 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
         console.print("")
 
 
+@main.command("validate")
+@click.option("--master", required=True, help="Path to master resume (markdown)")
+@click.option("--job", default=None, help="Path to job posting text file")
+@click.option("--job-url", default=None, help="URL of job posting to scrape")
+@click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
+@click.option("--cover-letter", default=None, help="Path to cover letter output")
+@click.option("--output", default=None, help="Save the validation report to markdown")
+def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
+    """Validate tailored output against the source resume and job posting.
+
+    Flags likely unsupported claims, title/date/company drift, and
+    suspicious rewrites before you send a resume or cover letter.
+
+    
+    Examples:
+      resume-engine validate --master resume.md --job posting.txt --resume tailored.md
+      resume-engine validate --master resume.md --job posting.txt --cover-letter cover.md
+      resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover.md
+    """
+    from rich.table import Table
+
+    from .validate import validate_outputs
+
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+    if not resume_output and not cover_letter:
+        raise click.UsageError("Provide --resume, --cover-letter, or both")
+
+    console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
+
+    with open(master) as f:
+        master_text = f.read()
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    else:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
+
+    resume_text = None
+    if resume_output:
+        with open(resume_output) as f:
+            resume_text = f.read()
+
+    cover_text = None
+    if cover_letter:
+        with open(cover_letter) as f:
+            cover_text = f.read()
+
+    report = validate_outputs(
+        master_text=master_text,
+        job_text=job_text,
+        tailored_resume_text=resume_text,
+        cover_letter_text=cover_text,
+    )
+
+    md_lines = ["# Validation Report\n"]
+    has_high = False
+
+    for target in report.targets:
+        score_style = "bold green" if target.score >= 85 else ("bold yellow" if target.score >= 65 else "bold red")
+        console.print("")
+        console.print(f"[bold]{target.label.title()}[/bold] trust score: [{score_style}]{target.score}/100[/{score_style}]")
+        md_lines.append(f"## {target.label.title()}\n")
+        md_lines.append(f"Trust score: {target.score}/100\n")
+
+        if not target.issues:
+            console.print("  [green]No obvious grounding problems detected.[/green]")
+            md_lines.append("- No obvious grounding problems detected.\n")
+            continue
+
+        table = Table(show_header=True, header_style="bold cyan")
+        table.add_column("Severity", width=8)
+        table.add_column("Category", width=18)
+        table.add_column("Message", width=34)
+        table.add_column("Evidence", width=34)
+
+        for issue in target.issues:
+            if issue.severity == "high":
+                has_high = True
+            sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(issue.severity, "white")
+            table.add_row(
+                f"[{sev_style}]{issue.severity}[/{sev_style}]",
+                issue.category,
+                issue.message,
+                issue.evidence[:120],
+            )
+            md_lines.append(f"- **{issue.severity.upper()} | {issue.category}:** {issue.message}\n")
+            if issue.evidence:
+                md_lines.append(f"  - Evidence: `{issue.evidence}`\n")
+            if issue.suggestion:
+                md_lines.append(f"  - Suggestion: {issue.suggestion}\n")
+
+        console.print(table)
+
+    console.print("")
+    if has_high:
+        console.print("[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything.")
+    else:
+        console.print("[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence.")
+
+    if output:
+        with open(output, "w") as f:
+            f.writelines(md_lines)
+        console.print(f"[green]Validation report saved to {output}[/green]")
+
+    console.print("")
+
+
 @main.command("init")
 @click.option(
     "--output",

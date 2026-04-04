@@ -25,6 +25,7 @@
 16. ~~Cover letter quality scorer (`resume-engine cover-score cover-letter.md`) -- instant 0-100 health score, 5 dimensions (opening hook, company specificity, value proposition, length, filler), no LLM required~~ (done)
 17. ~~Application tracker (`resume-engine track`) -- local SQLite log of jobs applied to (company, role, date, status, notes); search and update status from the CLI~~ (done)
 18. ~~Interactive resume builder (`resume-engine init`) -- guided setup wizard creates a master resume from scratch via interactive prompts; no existing resume or LLM required~~ (done)
+19. ~~Grounded output validator (`resume-engine validate`) -- compare tailored resume / cover letter output against the source master resume + job posting, flag unsupported claims, title/date/company drift, and suspicious rewrites before the user sends anything. This should become the main trust feature before adding more generation surface area.~~ (done)
 
 ## Constraints
 - Python 3.9+, minimal dependencies

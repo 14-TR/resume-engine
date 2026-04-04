@@ -22,6 +22,7 @@ class TestCLIHelp:
         assert "batch" in result.output
         assert "templates" in result.output
         assert "import" in result.output
+        assert "validate" in result.output
 
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
