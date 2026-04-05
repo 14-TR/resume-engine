@@ -24,6 +24,20 @@ class TestCLIHelp:
         assert "import" in result.output
         assert "validate" in result.output
 
+    def test_legacy_module_entrypoint_help(self):
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, "-m", "src.cli", "--help"],
+            cwd="/Users/tr-mini/Desktop/resume-engine",
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert "AI-powered resume tailoring CLI." in result.stdout
+        assert "tailor" in result.stdout
+
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
