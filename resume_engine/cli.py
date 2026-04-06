@@ -1328,6 +1328,7 @@ def track():
     Commands:
       add     Log a new application
       list    Show all applications (with optional filters)
+      export  Export tracked applications to JSON or CSV
       update  Update status or notes on an application
       delete  Remove an application from the log
       show    Show full details for one application
@@ -1402,6 +1403,68 @@ def track_list(status, company, limit):
 
     console.print(table)
     console.print(f"[dim]{len(rows)} application(s)[/dim]")
+
+
+@track.command("export")
+@click.option("--status", default=None, help="Filter by status")
+@click.option("--company", default=None, help="Filter by company name (partial match)")
+@click.option("--limit", default=None, type=int, help="Max rows to export")
+@click.option(
+    "--format",
+    "export_format",
+    default="json",
+    type=click.Choice(["json", "csv"]),
+    show_default=True,
+    help="Export file format",
+)
+@click.option(
+    "--output",
+    default=None,
+    help="Write export to a file instead of stdout",
+)
+def track_export(status, company, limit, export_format, output):
+    """Export tracked applications to JSON or CSV."""
+    import csv
+    import json
+    import sys
+
+    from .tracker import list_applications
+
+    rows = list_applications(status=status, company=company, limit=limit)
+
+    if export_format == "json":
+        payload = json.dumps(rows, indent=2)
+        if output:
+            with open(output, "w") as f:
+                f.write(payload + "\n")
+            console.print(f"[green]Exported {len(rows)} application(s) to {output}[/green]")
+        else:
+            click.echo(payload)
+        return
+
+    fieldnames = [
+        "id",
+        "company",
+        "role",
+        "date",
+        "status",
+        "url",
+        "notes",
+        "created_at",
+        "updated_at",
+    ]
+
+    if output:
+        with open(output, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        console.print(f"[green]Exported {len(rows)} application(s) to {output}[/green]")
+        return
+
+    writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames)
+    writer.writeheader()
+    writer.writerows(rows)
 
 
 @track.command("show")
