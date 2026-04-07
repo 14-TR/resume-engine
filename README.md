@@ -17,6 +17,9 @@ resume-engine tailor --master resume.md --job posting.txt --output tailored.md
 # Full application package (resume + cover letter)
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 
+# Generate a validation report with the package
+resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report
+
 # Score your resume quality (instant, no LLM)
 resume-engine score resume.md
 
@@ -60,11 +63,12 @@ resume-engine cover --master resume.md --job-url "https://example.com/jobs/123" 
 
 ### package
 
-Generate a complete application package (tailored resume + cover letter) in one command.
+Generate a complete application package (tailored resume + cover letter) in one command. Optionally include a grounded validation report in the same output folder before you send anything.
 
 ```bash
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 resume-engine package --master resume.md --job posting.txt --outdir ./app/ --format pdf
+resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report
 ```
 
 ### score

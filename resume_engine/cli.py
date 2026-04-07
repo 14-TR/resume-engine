@@ -250,7 +250,23 @@ def cover(
     default=lambda: _cfg_default("template"),
     help="Resume/cover letter template/style (run `templates list` to see options)",
 )
-def package(master, linkedin_url, linkedin_export, job, job_url, outdir, model, fmt, template):
+@click.option(
+    "--validate-report/--no-validate-report",
+    default=False,
+    help="Generate a grounded validation report alongside the package outputs.",
+)
+def package(
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    outdir,
+    model,
+    fmt,
+    template,
+    validate_report,
+):
     """Generate full application package (resume + cover letter)."""
     import os
 
@@ -295,6 +311,37 @@ def package(master, linkedin_url, linkedin_export, job, job_url, outdir, model, 
             console.print("[green]PDFs generated[/green]")
         except RuntimeError as e:
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+
+    if validate_report:
+        from .validate import validate_outputs
+
+        report = validate_outputs(
+            master_text=master_text,
+            job_text=job_text,
+            tailored_resume_text=resume,
+            cover_letter_text=letter,
+        )
+        validation_path = os.path.join(outdir, "validation-report.md")
+        md_lines = ["# Validation Report\n"]
+
+        for target in report.targets:
+            md_lines.append(f"## {target.label.title()}\n")
+            md_lines.append(f"Trust score: {target.score}/100\n")
+            if not target.issues:
+                md_lines.append("- No obvious grounding problems detected.\n")
+                continue
+            for issue in target.issues:
+                md_lines.append(
+                    f"- **{issue.severity.upper()} | {issue.category}:** {issue.message}\n"
+                )
+                if issue.evidence:
+                    md_lines.append(f"  - Evidence: `{issue.evidence}`\n")
+                if issue.suggestion:
+                    md_lines.append(f"  - Suggestion: {issue.suggestion}\n")
+
+        with open(validation_path, "w") as f:
+            f.writelines(md_lines)
+        console.print(f"[green]Validation report written to {validation_path}[/green]")
 
     console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 

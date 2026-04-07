@@ -56,6 +56,12 @@ class TestCLIHelp:
         assert result.exit_code == 0
         assert "--master" in result.output
 
+    def test_package_help(self, runner):
+        result = runner.invoke(main, ["package", "--help"])
+        assert result.exit_code == 0
+        assert "--validate-report" in result.output
+        assert "--outdir" in result.output
+
     def test_ats_help(self, runner):
         result = runner.invoke(main, ["ats", "--help"])
         assert result.exit_code == 0
@@ -211,3 +217,77 @@ class TestTrackExportCommand:
         assert "company,role,date,status,url,notes,created_at,updated_at" in csv_text
         assert "Beta,Analyst" in csv_text
         assert "Acme" not in csv_text
+
+
+class TestPackageCommand:
+    def test_package_generates_validation_report(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n",
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: "Dear Acme Corp,\n\nI build Python APIs.\n",
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--validate-report",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert (outdir / "resume.md").exists()
+        assert (outdir / "cover-letter.md").exists()
+        report_path = outdir / "validation-report.md"
+        assert report_path.exists()
+        report_text = report_path.read_text()
+        assert "# Validation Report" in report_text
+        assert "## Resume" in report_text
+        assert "## Cover-Letter" in report_text
+
+    def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n- Built Python APIs.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python engineer.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: "Dear team,\n",
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert not (outdir / "validation-report.md").exists()
