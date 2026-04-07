@@ -159,6 +159,10 @@ resume-engine track update 1 --notes "Phone screen scheduled for Friday"
 resume-engine track show 1
 resume-engine track stats
 
+# Export your tracker to JSON or CSV
+resume-engine track export --format json --output applications.json
+resume-engine track export --format csv --status interview --output interviews.csv
+
 # Remove an entry
 resume-engine track delete 3
 ```

@@ -72,6 +72,17 @@ class TestCLIHelp:
         result = runner.invoke(main, ["templates", "list", "--help"])
         assert result.exit_code == 0
 
+    def test_track_help(self, runner):
+        result = runner.invoke(main, ["track", "--help"])
+        assert result.exit_code == 0
+        assert "export" in result.output
+
+    def test_track_export_help(self, runner):
+        result = runner.invoke(main, ["track", "export", "--help"])
+        assert result.exit_code == 0
+        assert "--format" in result.output
+        assert "--output" in result.output
+
 
 class TestATSCommand:
     def test_ats_requires_job(self, runner, tmp_path):
@@ -155,3 +166,48 @@ class TestImportCommand:
         )
         assert result.exit_code != 0
         assert "stdin" in result.output.lower() or "both" in result.output.lower()
+
+
+class TestTrackExportCommand:
+    def test_track_export_json_stdout(self, runner, tmp_path, monkeypatch):
+        db_dir = tmp_path / "xdg-data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(db_dir))
+
+        result = runner.invoke(
+            main,
+            ["track", "add", "--company", "Acme", "--role", "Engineer", "--status", "screening"],
+        )
+        assert result.exit_code == 0
+
+        export_result = runner.invoke(main, ["track", "export", "--format", "json"])
+        assert export_result.exit_code == 0
+        assert '"company": "Acme"' in export_result.output
+        assert '"status": "screening"' in export_result.output
+
+    def test_track_export_csv_file(self, runner, tmp_path, monkeypatch):
+        db_dir = tmp_path / "xdg-data"
+        monkeypatch.setenv("XDG_DATA_HOME", str(db_dir))
+
+        runner.invoke(main, ["track", "add", "--company", "Acme", "--role", "Engineer"])
+        runner.invoke(main, ["track", "add", "--company", "Beta", "--role", "Analyst", "--status", "interview"])
+
+        output_file = tmp_path / "applications.csv"
+        export_result = runner.invoke(
+            main,
+            [
+                "track",
+                "export",
+                "--format",
+                "csv",
+                "--status",
+                "interview",
+                "--output",
+                str(output_file),
+            ],
+        )
+        assert export_result.exit_code == 0
+        assert output_file.exists()
+        csv_text = output_file.read_text()
+        assert "company,role,date,status,url,notes,created_at,updated_at" in csv_text
+        assert "Beta,Analyst" in csv_text
+        assert "Acme" not in csv_text
