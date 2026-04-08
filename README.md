@@ -73,11 +73,12 @@ resume-engine package --master resume.md --job posting.txt --outdir ./applicatio
 
 ### score
 
-Instant resume quality score (0-100) across 5 dimensions: structure, readability, quantified achievements, keywords, and impact. No LLM required.
+Instant resume quality score (0-100) across 5 dimensions: structure, readability, quantified achievements, keywords, and impact. No LLM required. Use `--json` for automation-friendly output.
 
 ```bash
 resume-engine score master-resume.md
 resume-engine score tailored.md --brief
+resume-engine score master-resume.md --json
 ```
 
 ### cover-score
