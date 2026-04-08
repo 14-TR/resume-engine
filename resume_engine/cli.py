@@ -914,17 +914,22 @@ def config_reset():
 @click.option(
     "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
 )
-def score_cmd(resume, brief):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def score_cmd(resume, brief, json_output):
     """Score a resume's overall quality (0-100) across 5 dimensions.
 
     Checks section completeness, quantified achievements, action verb usage,
     length, and filler language. No LLM required -- runs instantly.
 
-    \b
+    
     Examples:
       resume-engine score master-resume.md
       resume-engine score tailored.md --brief
+      resume-engine score master-resume.md --json
     """
+    import json
+    from dataclasses import asdict
+
     from rich.table import Table
 
     from .scorer import score_resume
@@ -933,9 +938,6 @@ def score_cmd(resume, brief):
         text = f.read()
 
     result = score_resume(text)
-
-    console.print("")
-    console.print(Panel(f"[bold]Resume Quality Score[/bold]   {resume}", style="blue"))
 
     # Grade band
     total = result.total
@@ -956,6 +958,15 @@ def score_cmd(resume, brief):
         grade_style = "bold red"
         grade_label = "Significant gaps"
 
+    if json_output:
+        payload = asdict(result)
+        payload["resume"] = resume
+        payload["grade"] = {"letter": grade, "label": grade_label}
+        console.print_json(json.dumps(payload))
+        return
+
+    console.print("")
+    console.print(Panel(f"[bold]Resume Quality Score[/bold]   {resume}", style="blue"))
     console.print(
         f"\n  Overall score: [{grade_style}]{total}/100  Grade {grade}  {grade_label}[/{grade_style}]"
         f"   ({result.word_count} words)\n"
@@ -964,7 +975,6 @@ def score_cmd(resume, brief):
     if brief:
         return
 
-    # Dimension table
     table = Table(show_header=True, header_style="bold cyan")
     table.add_column("Dimension", style="bold", width=26)
     table.add_column("Score", width=10)
@@ -985,8 +995,6 @@ def score_cmd(resume, brief):
         )
 
     console.print(table)
-
-    # Stats row
     console.print(
         f"\n  Sections found: [green]{', '.join(result.found_sections) or 'none'}[/green]"
     )
@@ -997,7 +1005,6 @@ def score_cmd(resume, brief):
         f"   Action verbs: [cyan]{result.action_verb_count}[/cyan]"
     )
 
-    # Suggestions
     all_suggestions = [s for dim in result.dimensions for s in dim.suggestions]
     if all_suggestions:
         console.print("\n  [bold yellow]Suggestions:[/bold yellow]")
@@ -1008,8 +1015,8 @@ def score_cmd(resume, brief):
 
     console.print("")
 
-
 @main.command("optimize")
+
 @click.argument("resume", type=click.Path(exists=True))
 @click.option("--output", default=None, help="Output file path (default: <resume>-optimized.md)")
 @click.option(

@@ -277,3 +277,24 @@ class TestScoreCLI:
         )
         assert result.returncode == 0
         assert "/100" in result.stdout
+
+    def test_score_json_flag(self, tmp_path):
+        """--json outputs machine-readable score data."""
+        import json
+        import subprocess
+        import sys
+
+        resume = tmp_path / "resume.md"
+        resume.write_text(GOOD_RESUME)
+        result = subprocess.run(
+            [sys.executable, "-m", "resume_engine.cli", "score", str(resume), "--json"],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent),
+        )
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        assert payload["resume"] == str(resume)
+        assert payload["total"] >= 60
+        assert payload["grade"]["letter"] in {"A", "B", "C", "D"}
+        assert len(payload["dimensions"]) == 5

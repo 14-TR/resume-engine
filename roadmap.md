@@ -33,3 +33,5 @@
 - No em dashes in output
 - Public repo (14-TR/resume-engine)
 - MIT license
+
+20. ~~Machine-readable scoring output (`resume-engine score --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
