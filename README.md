@@ -26,6 +26,9 @@ resume-engine score resume.md
 # Validate a tailored resume before sending
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 
+# Diagnose local setup issues before you start
+resume-engine doctor
+
 # Track where you've applied
 resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 ```
@@ -173,6 +176,15 @@ resume-engine track delete 3
 ```
 
 Valid statuses: `applied`, `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
+
+### doctor
+
+Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken.
+
+```bash
+resume-engine doctor
+resume-engine doctor --strict
+```
 
 ### config
 

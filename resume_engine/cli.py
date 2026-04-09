@@ -629,6 +629,28 @@ def check():
         raise SystemExit(1)
 
 
+@main.command()
+@click.option("--strict", is_flag=True, default=False, help="Exit with a non-zero status if any required checks fail")
+def doctor(strict):
+    """Diagnose local setup issues before you tailor or export."""
+    from .doctor import run_diagnostics, summarize_results
+
+    status_styles = {"pass": "green", "warn": "yellow", "fail": "red"}
+    status_labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL"}
+
+    console.print(Panel("[bold]resume-engine[/bold] - environment doctor", style="blue"))
+    results = run_diagnostics()
+    for result in results:
+        label = status_labels[result.status]
+        console.print(f"[{status_styles[result.status]}]{label}[/{status_styles[result.status]}] {result.name}: {result.detail}")
+
+    passed, warned, failed = summarize_results(results)
+    console.print(f"[bold]Summary:[/bold] {passed} passed, {warned} warning(s), {failed} failed")
+
+    if strict and failed:
+        raise click.ClickException("Doctor found required setup failures.")
+
+
 @main.group()
 def templates():
     """Manage and list resume templates."""
@@ -1243,7 +1265,7 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
         md_lines.append(result.raw_questions)
 
     if result.followups:
-        console.print(f"\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
+        console.print("\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
         md_lines.append("## Likely Follow-Up Questions\n")
 
         for fq in result.followups:

@@ -23,6 +23,7 @@ class TestCLIHelp:
         assert "templates" in result.output
         assert "import" in result.output
         assert "validate" in result.output
+        assert "doctor" in result.output
 
     def test_legacy_module_entrypoint_help(self):
         import subprocess
@@ -82,6 +83,11 @@ class TestCLIHelp:
         result = runner.invoke(main, ["track", "--help"])
         assert result.exit_code == 0
         assert "export" in result.output
+
+    def test_doctor_help(self, runner):
+        result = runner.invoke(main, ["doctor", "--help"] )
+        assert result.exit_code == 0
+        assert "--strict" in result.output
 
     def test_track_export_help(self, runner):
         result = runner.invoke(main, ["track", "export", "--help"])
