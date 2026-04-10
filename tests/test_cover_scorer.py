@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from resume_engine.cover_scorer import (
     CoverDimension,
     CoverScorerResult,
@@ -370,6 +372,41 @@ class TestCoverScoreCLI:
         assert result.exit_code == 0
         # Brief mode should not show the full dimension table
         assert "Suggestions" not in result.output
+
+    def test_cover_score_json_flag(self, tmp_path):
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        cover_file = tmp_path / "cover.md"
+        cover_file.write_text(STRONG_COVER)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["cover-score", str(cover_file), "--json"])
+        assert result.exit_code == 0
+
+        payload = json.loads(result.output)
+        assert payload["cover_letter"] == str(cover_file)
+        assert payload["total"] >= 85
+        assert payload["grade"]["letter"] == "A"
+        assert len(payload["dimensions"]) == 5
+
+    def test_cover_score_json_with_brief_flag(self, tmp_path):
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        cover_file = tmp_path / "cover.md"
+        cover_file.write_text(WEAK_COVER)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["cover-score", str(cover_file), "--brief", "--json"])
+        assert result.exit_code == 0
+
+        payload = json.loads(result.output)
+        assert payload["cover_letter"] == str(cover_file)
+        assert payload["total"] < 50
+        assert payload["grade"]["letter"] == "D"
 
     def test_cover_score_missing_file(self):
         from click.testing import CliRunner

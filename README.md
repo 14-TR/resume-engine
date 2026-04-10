@@ -91,6 +91,7 @@ Instant cover letter quality score (0-100) across 5 dimensions: opening hook, co
 ```bash
 resume-engine cover-score cover-letter.md
 resume-engine cover-score cover-letter.md --brief
+resume-engine cover-score cover-letter.md --json
 ```
 
 ### validate
