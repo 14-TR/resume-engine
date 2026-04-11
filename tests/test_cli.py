@@ -1,5 +1,7 @@
 """Tests for CLI entry points (no LLM calls)."""
 
+import json
+
 import pytest
 from click.testing import CliRunner
 
@@ -231,7 +233,11 @@ class TestTrackExportCommand:
 class TestPackageCommand:
     def test_package_generates_validation_report(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        master_file.write_text("# Jane Doe
+
+## Experience
+- Built Python APIs for Acme Corp.
+")
         job_file = tmp_path / "job.txt"
         job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
         outdir = tmp_path / "application"
@@ -239,13 +245,19 @@ class TestPackageCommand:
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
             lambda master_text, job_text, model, template=None: (
-                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+                "# Tailored Resume
+
+- Built Python APIs for Acme Corp.
+"
             ),
         )
         monkeypatch.setattr(
             "resume_engine.engine.generate_cover_letter",
             lambda master_text, job_text, model, template=None: (
-                "Dear Acme Corp,\n\nI build Python APIs.\n"
+                "Dear Acme Corp,
+
+I build Python APIs.
+"
             ),
         )
 
@@ -275,18 +287,23 @@ class TestPackageCommand:
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\n\n- Built Python APIs.\n")
+        master_file.write_text("# Jane Doe
+
+- Built Python APIs.
+")
         job_file = tmp_path / "job.txt"
         job_file.write_text("Need a Python engineer.")
         outdir = tmp_path / "application"
 
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
+            lambda master_text, job_text, model, template=None: "# Tailored Resume
+",
         )
         monkeypatch.setattr(
             "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear team,\n",
+            lambda master_text, job_text, model, template=None: "Dear team,
+",
         )
 
         result = runner.invoke(
@@ -304,3 +321,70 @@ class TestPackageCommand:
 
         assert result.exit_code == 0
         assert not (outdir / "validation-report.md").exists()
+
+
+class TestFitCommand:
+    def test_fit_json_output(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe
+Python, AWS, Kubernetes
+")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need Python, AWS, Kubernetes.")
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fake_fit = types.ModuleType("resume_engine.fit")
+        fake_fit.assess_fit = lambda master_text, job_text, model="ollama": FitResult(
+            total=82,
+            dimensions=[
+                FitDimension(name="ATS Keyword Match", score=16, max_score=20, notes=["Matched 3/3 keywords"]),
+                FitDimension(name="Required Skills Coverage", score=21, max_score=25),
+                FitDimension(name="Seniority / Level Match", score=17, max_score=20),
+                FitDimension(name="Industry / Domain Fit", score=12, max_score=15),
+                FitDimension(name="Overall Assessment", score=16, max_score=20),
+            ],
+            verdict="Strong fit for the role",
+            recommendation="Apply",
+            strengths=["Strong Python match"],
+            gaps=["No explicit fintech background"],
+            raw_analysis="Structured analysis",
+            ats_score=80,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fake_fit)
+
+        result = runner.invoke(
+            main,
+            ["fit", "--master", str(master_file), "--job", str(job_file), "--json"],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["total"] == 82
+        assert payload["recommendation"] == "Apply"
+        assert payload["master"] == str(master_file)
+        assert payload["job"] == str(job_file)
+        assert payload["job_url"] is None
+        assert payload["model"] == "ollama"
+        assert len(payload["dimensions"]) == 5
+
