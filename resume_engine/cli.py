@@ -1681,7 +1681,8 @@ def track_stats():
     default=None,
     help="Save full fit report to a markdown file",
 )
-def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output, json_output):
     """Score how well you fit a job posting (0-100) before applying.
 
     Combines ATS keyword analysis with LLM-powered evaluation of skills
@@ -1693,13 +1694,18 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
       resume-engine fit --master resume.md --job posting.txt
       resume-engine fit --master resume.md --job-url https://example.com/jobs/123
       resume-engine fit --master resume.md --job posting.txt --model openai --output report.md
+      resume-engine fit --master resume.md --job posting.txt --json
     """
+    import json
+    from dataclasses import asdict
+
     from .fit import assess_fit
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1711,9 +1717,19 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Running fit analysis with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Running fit analysis with {model}...[/dim]")
 
     result = assess_fit(master_text, job_text, model=model)
+
+    if json_output:
+        payload = asdict(result)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["model"] = model
+        console.print_json(json.dumps(payload))
+        return
 
     # Recommendation style
     REC_STYLES = {
