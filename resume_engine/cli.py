@@ -1192,9 +1192,8 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     default=None,
     help="Save prep sheet to a markdown file",
 )
-def interview(
-    master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output
-):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output, json_output):
     """Generate tailored interview questions with STAR-method answer frameworks.
 
     Analyzes the job posting and your resume to predict likely questions
@@ -1207,13 +1206,18 @@ def interview(
       resume-engine interview --master resume.md --job posting.txt
       resume-engine interview --master resume.md --job-url https://example.com/jobs/123 --count 15
       resume-engine interview --master resume.md --job posting.txt --with-followups --output prep.md
+      resume-engine interview --master resume.md --job posting.txt --json
     """
+    import json
+    from dataclasses import asdict
+
     from .interview import generate_interview_prep
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1225,7 +1229,8 @@ def interview(
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
 
     result = generate_interview_prep(
         master_text,
@@ -1234,6 +1239,17 @@ def interview(
         count=count,
         with_followups=with_followups,
     )
+
+    if json_output:
+        payload = asdict(result)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["model"] = model
+        payload["count"] = count
+        payload["with_followups"] = with_followups
+        console.print_json(json.dumps(payload))
+        return
 
     # Category colors
     CATEGORY_STYLES = {
