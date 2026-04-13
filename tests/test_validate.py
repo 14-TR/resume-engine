@@ -115,3 +115,38 @@ def test_validate_cli_runs_and_writes_report(tmp_path):
     content = report.read_text()
     assert "Validation Report" in content
     assert "company drift" in content
+
+
+def test_validate_cli_json_output(tmp_path):
+    import json
+
+    master = tmp_path / "master.md"
+    job = tmp_path / "job.txt"
+    tailored = tmp_path / "tailored.md"
+    master.write_text(MASTER)
+    job.write_text(JOB)
+    tailored.write_text(TAILORED_BAD)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "validate",
+            "--master",
+            str(master),
+            "--job",
+            str(job),
+            "--resume",
+            str(tailored),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["master"] == str(master)
+    assert payload["job"] == str(job)
+    assert payload["resume"] == str(tailored)
+    assert payload["cover_letter"] is None
+    assert payload["targets"][0]["label"] == "resume"
+    assert any(issue["category"] == "company drift" for issue in payload["targets"][0]["issues"])

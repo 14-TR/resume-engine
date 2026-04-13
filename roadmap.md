@@ -39,3 +39,4 @@
 22. ~~Machine-readable cover letter scoring output (`resume-engine cover-score --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
 23. ~~Machine-readable job fit output (`resume-engine fit --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
 24. ~~Machine-readable interview prep output (`resume-engine interview --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
+25. ~~Machine-readable grounded validation output (`resume-engine validate --json`) -- emit structured JSON for CI checks, editor integrations, and scripted review workflows~~ (done)

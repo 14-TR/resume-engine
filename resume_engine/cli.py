@@ -1853,6 +1853,7 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
         console.print("")
 
 
+
 @main.command("validate")
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
@@ -1860,7 +1861,8 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
 @click.option("--cover-letter", default=None, help="Path to cover letter output")
 @click.option("--output", default=None, help="Save the validation report to markdown")
-def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
     """Validate tailored output against the source resume and job posting.
 
     Flags likely unsupported claims, title/date/company drift, and
@@ -1871,7 +1873,11 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md
       resume-engine validate --master resume.md --job posting.txt --cover-letter cover.md
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover.md
+      resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
     """
+    import json
+    from dataclasses import asdict
+
     from rich.table import Table
 
     from .validate import validate_outputs
@@ -1881,7 +1887,8 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
     if not resume_output and not cover_letter:
         raise click.UsageError("Provide --resume, --cover-letter, or both")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
     with open(master) as f:
         master_text = f.read()
@@ -1910,6 +1917,16 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
         tailored_resume_text=resume_text,
         cover_letter_text=cover_text,
     )
+
+    if json_output:
+        payload = asdict(report)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["resume"] = resume_output
+        payload["cover_letter"] = cover_letter
+        console.print_json(json.dumps(payload))
+        return
 
     md_lines = ["# Validation Report\n"]
     has_high = False
