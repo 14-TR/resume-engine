@@ -126,7 +126,10 @@ class TestGenericOpener:
         assert _check_generic_opener("When I shipped the API, I reduced latency by 40%.") is False
 
     def test_specific_claim(self):
-        assert _check_generic_opener("I built the payment system that processes 1M requests daily.") is False
+        assert (
+            _check_generic_opener("I built the payment system that processes 1M requests daily.")
+            is False
+        )
 
 
 class TestCountSpecificity:

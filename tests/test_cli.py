@@ -85,7 +85,7 @@ class TestCLIHelp:
         assert "export" in result.output
 
     def test_doctor_help(self, runner):
-        result = runner.invoke(main, ["doctor", "--help"] )
+        result = runner.invoke(main, ["doctor", "--help"])
         assert result.exit_code == 0
         assert "--strict" in result.output
 
@@ -201,7 +201,10 @@ class TestTrackExportCommand:
         monkeypatch.setenv("XDG_DATA_HOME", str(db_dir))
 
         runner.invoke(main, ["track", "add", "--company", "Acme", "--role", "Engineer"])
-        runner.invoke(main, ["track", "add", "--company", "Beta", "--role", "Analyst", "--status", "interview"])
+        runner.invoke(
+            main,
+            ["track", "add", "--company", "Beta", "--role", "Analyst", "--status", "interview"],
+        )
 
         output_file = tmp_path / "applications.csv"
         export_result = runner.invoke(
@@ -235,11 +238,15 @@ class TestPackageCommand:
 
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+            ),
         )
         monkeypatch.setattr(
             "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear Acme Corp,\n\nI build Python APIs.\n",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Acme Corp,\n\nI build Python APIs.\n"
+            ),
         )
 
         result = runner.invoke(

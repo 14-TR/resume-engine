@@ -4,17 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from resume_engine.interview import (
     InterviewPrepResult,
-    InterviewQuestion,
-    FollowupQuestion,
-    _parse_questions,
     _parse_followups,
+    _parse_questions,
     generate_interview_prep,
 )
-
 
 SAMPLE_RESUME = """# Jane Smith
 jane@example.com | (555) 555-1234
@@ -93,7 +88,9 @@ class TestParseQuestions:
 
     def test_question_text_extracted(self):
         questions = _parse_questions(SAMPLE_QUESTIONS_RAW)
-        assert "migration" in questions[0].question.lower() or "led" in questions[0].question.lower()
+        assert (
+            "migration" in questions[0].question.lower() or "led" in questions[0].question.lower()
+        )
 
     def test_categories_extracted(self):
         questions = _parse_questions(SAMPLE_QUESTIONS_RAW)
@@ -132,7 +129,10 @@ class TestParseFollowups:
     def test_probing_extracted(self):
         followups = _parse_followups(SAMPLE_FOLLOWUPS_RAW)
         assert followups[0].probing != ""
-        assert "departure" in followups[0].probing.lower() or "voluntary" in followups[0].probing.lower()
+        assert (
+            "departure" in followups[0].probing.lower()
+            or "voluntary" in followups[0].probing.lower()
+        )
 
     def test_empty_input_returns_empty(self):
         assert _parse_followups("") == []
@@ -141,7 +141,7 @@ class TestParseFollowups:
 class TestGenerateInterviewPrep:
     def test_calls_llm_with_resume_and_job(self):
         with patch("resume_engine.interview.complete", return_value=SAMPLE_QUESTIONS_RAW) as mock:
-            result = generate_interview_prep(SAMPLE_RESUME, SAMPLE_JOB, model="openai")
+            generate_interview_prep(SAMPLE_RESUME, SAMPLE_JOB, model="openai")
 
         mock.assert_called_once()
         prompt = mock.call_args[0][0]
@@ -173,9 +173,7 @@ class TestGenerateInterviewPrep:
     def test_with_followups_calls_llm_twice(self):
         call_responses = [SAMPLE_QUESTIONS_RAW, SAMPLE_FOLLOWUPS_RAW]
         with patch("resume_engine.interview.complete", side_effect=call_responses) as mock:
-            result = generate_interview_prep(
-                SAMPLE_RESUME, SAMPLE_JOB, with_followups=True
-            )
+            result = generate_interview_prep(SAMPLE_RESUME, SAMPLE_JOB, with_followups=True)
 
         assert mock.call_count == 2
         assert len(result.followups) >= 1
@@ -197,6 +195,7 @@ class TestGenerateInterviewPrep:
 class TestInterviewCLI:
     def test_interview_command_exists(self):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         runner = CliRunner()
@@ -207,6 +206,7 @@ class TestInterviewCLI:
 
     def test_requires_job_or_job_url(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -219,6 +219,7 @@ class TestInterviewCLI:
 
     def test_basic_invocation(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -238,9 +239,12 @@ class TestInterviewCLI:
                 main,
                 [
                     "interview",
-                    "--master", str(resume_file),
-                    "--job", str(job_file),
-                    "--model", "openai",
+                    "--master",
+                    str(resume_file),
+                    "--job",
+                    str(job_file),
+                    "--model",
+                    "openai",
                 ],
             )
 
@@ -249,6 +253,7 @@ class TestInterviewCLI:
 
     def test_output_file_written(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -269,10 +274,14 @@ class TestInterviewCLI:
                 main,
                 [
                     "interview",
-                    "--master", str(resume_file),
-                    "--job", str(job_file),
-                    "--output", str(out_file),
-                    "--model", "openai",
+                    "--master",
+                    str(resume_file),
+                    "--job",
+                    str(job_file),
+                    "--output",
+                    str(out_file),
+                    "--model",
+                    "openai",
                 ],
             )
 
@@ -283,6 +292,7 @@ class TestInterviewCLI:
 
     def test_with_followups_flag(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -306,10 +316,13 @@ class TestInterviewCLI:
                 main,
                 [
                     "interview",
-                    "--master", str(resume_file),
-                    "--job", str(job_file),
+                    "--master",
+                    str(resume_file),
+                    "--job",
+                    str(job_file),
                     "--with-followups",
-                    "--model", "openai",
+                    "--model",
+                    "openai",
                 ],
             )
 
@@ -320,6 +333,7 @@ class TestInterviewCLI:
 
     def test_count_option_forwarded(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
@@ -336,10 +350,14 @@ class TestInterviewCLI:
                 main,
                 [
                     "interview",
-                    "--master", str(resume_file),
-                    "--job", str(job_file),
-                    "--count", "15",
-                    "--model", "openai",
+                    "--master",
+                    str(resume_file),
+                    "--job",
+                    str(job_file),
+                    "--count",
+                    "15",
+                    "--model",
+                    "openai",
                 ],
             )
 

@@ -228,7 +228,11 @@ def _score_opening_hook(text: str) -> tuple[CoverDimension, bool]:
     else:
         # Check if opener has numbers or a named company/project
         has_hook = bool(
-            re.search(r"\d+|built|shipped|led|launched|reduced|grew|created|designed", first, re.IGNORECASE)
+            re.search(
+                r"\d+|built|shipped|led|launched|reduced|grew|created|designed",
+                first,
+                re.IGNORECASE,
+            )
         )
         score = 20 if has_hook else 14
         suggestions = (
@@ -329,9 +333,7 @@ def _score_value_proposition(text: str) -> tuple[CoverDimension, int]:
         score += 10
     elif specific_count == 1:
         score += 5
-        suggestions.append(
-            "Add more quantified achievements to the value proposition section."
-        )
+        suggestions.append("Add more quantified achievements to the value proposition section.")
     else:
         suggestions.append(
             "No numbers or metrics in your value case. Add at least 2 concrete results."
@@ -358,14 +360,11 @@ def _score_length(text: str) -> tuple[CoverDimension, int]:
 
     if wc < 100:
         score = 3
-        suggestions.append(
-            f"Cover letter is very short ({wc} words). Aim for 250-400 words."
-        )
+        suggestions.append(f"Cover letter is very short ({wc} words). Aim for 250-400 words.")
     elif wc < 200:
         score = 8
         suggestions.append(
-            f"Cover letter is short ({wc} words). Aim for 250-400 words "
-            "to fully convey your fit."
+            f"Cover letter is short ({wc} words). Aim for 250-400 words to fully convey your fit."
         )
     elif wc <= 400:
         score = 15  # Sweet spot
