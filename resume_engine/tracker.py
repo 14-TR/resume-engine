@@ -26,11 +26,11 @@ DB_FILE = DATA_DIR / "tracker.db"
 VALID_STATUSES = ["applied", "screening", "interview", "offer", "rejected", "withdrawn"]
 
 STATUS_STYLES = {
-    "applied":   "cyan",
+    "applied": "cyan",
     "screening": "blue",
     "interview": "yellow",
-    "offer":     "bold green",
-    "rejected":  "red",
+    "offer": "bold green",
+    "rejected": "red",
     "withdrawn": "dim",
 }
 
@@ -157,11 +157,17 @@ def update_application(
 
     now = _now_iso()
     if status is not None:
-        conn.execute("UPDATE applications SET status = ?, updated_at = ? WHERE id = ?", (status, now, app_id))
+        conn.execute(
+            "UPDATE applications SET status = ?, updated_at = ? WHERE id = ?", (status, now, app_id)
+        )
     if notes is not None:
-        conn.execute("UPDATE applications SET notes = ?, updated_at = ? WHERE id = ?", (notes, now, app_id))
+        conn.execute(
+            "UPDATE applications SET notes = ?, updated_at = ? WHERE id = ?", (notes, now, app_id)
+        )
     if url is not None:
-        conn.execute("UPDATE applications SET url = ?, updated_at = ? WHERE id = ?", (url, now, app_id))
+        conn.execute(
+            "UPDATE applications SET url = ?, updated_at = ? WHERE id = ?", (url, now, app_id)
+        )
 
     conn.commit()
     conn.close()

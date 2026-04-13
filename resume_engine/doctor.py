@@ -91,7 +91,7 @@ def _check_api_key(provider: str, env_var: str, model: str) -> DiagnosticResult:
 
 
 def _check_pandoc() -> DiagnosticResult:
-    pandoc = shutil.which('pandoc')
+    pandoc = shutil.which("pandoc")
     if pandoc:
         return DiagnosticResult("Pandoc", "pass", f"pandoc found at {pandoc}.")
     return DiagnosticResult(

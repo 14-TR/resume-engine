@@ -60,7 +60,6 @@ def render_markdown(data: ResumeData) -> str:
         lines.append(" | ".join(contact_parts))
         lines.append("")
 
-    link_parts = []
     if data.linkedin:
         lines.append(f"LinkedIn: {data.linkedin}")
     if data.website:

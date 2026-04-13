@@ -8,27 +8,124 @@ from difflib import SequenceMatcher
 from typing import Iterable
 
 COMMON_SECTION_WORDS = {
-    "summary", "experience", "skills", "education", "projects", "certifications",
-    "contact", "professional", "technical", "leadership", "employment", "history",
-    "highlights", "resume", "letter", "dear", "sincerely", "regards", "phone",
-    "email", "linkedin", "city", "state", "remote", "hybrid", "present",
+    "summary",
+    "experience",
+    "skills",
+    "education",
+    "projects",
+    "certifications",
+    "contact",
+    "professional",
+    "technical",
+    "leadership",
+    "employment",
+    "history",
+    "highlights",
+    "resume",
+    "letter",
+    "dear",
+    "sincerely",
+    "regards",
+    "phone",
+    "email",
+    "linkedin",
+    "city",
+    "state",
+    "remote",
+    "hybrid",
+    "present",
 }
 STOPWORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "into",
-    "is", "of", "on", "or", "that", "the", "to", "with", "using", "used", "built",
-    "led", "managed", "developed", "delivered", "supported", "improved", "created",
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "is",
+    "of",
+    "on",
+    "or",
+    "that",
+    "the",
+    "to",
+    "with",
+    "using",
+    "used",
+    "built",
+    "led",
+    "managed",
+    "developed",
+    "delivered",
+    "supported",
+    "improved",
+    "created",
 }
 TITLE_WORDS = {
-    "engineer", "developer", "manager", "director", "lead", "analyst", "architect",
-    "consultant", "specialist", "associate", "intern", "principal", "staff", "senior",
-    "junior", "president", "coordinator", "designer", "administrator", "owner",
+    "engineer",
+    "developer",
+    "manager",
+    "director",
+    "lead",
+    "analyst",
+    "architect",
+    "consultant",
+    "specialist",
+    "associate",
+    "intern",
+    "principal",
+    "staff",
+    "senior",
+    "junior",
+    "president",
+    "coordinator",
+    "designer",
+    "administrator",
+    "owner",
 }
 SKILL_PHRASES = [
-    "python", "java", "javascript", "typescript", "go", "aws", "azure", "gcp",
-    "kubernetes", "docker", "terraform", "sql", "postgresql", "mysql", "react",
-    "node", "django", "flask", "fastapi", "graphql", "rest", "machine learning",
-    "ai", "llm", "ollama", "openai", "anthropic", "click", "rich", "httpx",
-    "git", "github actions", "linux", "agile", "scrum", "ci/cd",
+    "python",
+    "java",
+    "javascript",
+    "typescript",
+    "go",
+    "aws",
+    "azure",
+    "gcp",
+    "kubernetes",
+    "docker",
+    "terraform",
+    "sql",
+    "postgresql",
+    "mysql",
+    "react",
+    "node",
+    "django",
+    "flask",
+    "fastapi",
+    "graphql",
+    "rest",
+    "machine learning",
+    "ai",
+    "llm",
+    "ollama",
+    "openai",
+    "anthropic",
+    "click",
+    "rich",
+    "httpx",
+    "git",
+    "github actions",
+    "linux",
+    "agile",
+    "scrum",
+    "ci/cd",
 ]
 
 
@@ -64,13 +161,14 @@ def _tokenize(text: str) -> list[str]:
 
 def _meaningful_tokens(text: str) -> set[str]:
     return {
-        tok for tok in _tokenize(text)
+        tok
+        for tok in _tokenize(text)
         if len(tok) > 2 and tok not in STOPWORDS and not tok.isdigit()
     }
 
 
 def _extract_bullets(text: str) -> list[str]:
-    return [ln.strip()[2:].strip() for ln in text.splitlines() if ln.strip().startswith('- ')]
+    return [ln.strip()[2:].strip() for ln in text.splitlines() if ln.strip().startswith("- ")]
 
 
 def _extract_date_ranges(text: str) -> set[str]:
@@ -106,11 +204,11 @@ def _extract_companies(text: str) -> set[str]:
 def _extract_titles(text: str) -> set[str]:
     titles = set()
     for line in text.splitlines():
-        stripped = line.strip().lstrip('#').strip()
+        stripped = line.strip().lstrip("#").strip()
         if not stripped:
             continue
-        if '--' in stripped:
-            left = stripped.split('--', 1)[0].strip()
+        if "--" in stripped:
+            left = stripped.split("--", 1)[0].strip()
             if any(word in left.lower() for word in TITLE_WORDS):
                 titles.add(left)
         elif re.search(r"\b(?:as|role:?|title:?)\b", stripped, re.IGNORECASE):
@@ -167,7 +265,9 @@ def _dedupe_issues(issues: list[ValidationIssue]) -> list[ValidationIssue]:
     return result
 
 
-def validate_text(master_text: str, job_text: str, output_text: str, label: str) -> ValidationTargetResult:
+def validate_text(
+    master_text: str, job_text: str, output_text: str, label: str
+) -> ValidationTargetResult:
     issues: list[ValidationIssue] = []
 
     master_tokens = _meaningful_tokens(master_text)
@@ -178,82 +278,104 @@ def validate_text(master_text: str, job_text: str, output_text: str, label: str)
     master_dates = _extract_date_ranges(master_text)
     output_dates = _extract_date_ranges(output_text)
     for value in sorted(output_dates - master_dates):
-        issues.append(ValidationIssue(
-            severity="high",
-            category="date drift",
-            message="Output includes a date range not found in the master resume.",
-            evidence=value,
-            suggestion="Verify the role dates against the source resume.",
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="high",
+                category="date drift",
+                message="Output includes a date range not found in the master resume.",
+                evidence=value,
+                suggestion="Verify the role dates against the source resume.",
+            )
+        )
 
     master_companies = _extract_companies(master_text)
-    allowed_companies = {c.lower() for c in master_companies} | {c.lower() for c in _extract_companies(job_text)}
+    allowed_companies = {c.lower() for c in master_companies} | {
+        c.lower() for c in _extract_companies(job_text)
+    }
     for company in sorted(_extract_companies(output_text)):
         if company.lower() not in allowed_companies:
-            issues.append(ValidationIssue(
-                severity="high",
-                category="company drift",
-                message="Output mentions a company not grounded in the source inputs.",
-                evidence=company,
-                suggestion="Keep employer names anchored to the master resume and target employer only.",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="high",
+                    category="company drift",
+                    message="Output mentions a company not grounded in the source inputs.",
+                    evidence=company,
+                    suggestion="Keep employer names anchored to the master resume and target employer only.",
+                )
+            )
 
     master_titles = _extract_titles(master_text)
     job_titles = _extract_titles(job_text)
     allowed_titles = {t.lower() for t in master_titles | job_titles}
     for title in sorted(_extract_titles(output_text)):
         if title.lower() not in allowed_titles:
-            issues.append(ValidationIssue(
-                severity="medium",
-                category="title drift",
-                message="Output includes a role title that does not appear in the source inputs.",
-                evidence=title,
-                suggestion="Check whether the wording should match the original title more closely.",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="medium",
+                    category="title drift",
+                    message="Output includes a role title that does not appear in the source inputs.",
+                    evidence=title,
+                    suggestion="Check whether the wording should match the original title more closely.",
+                )
+            )
 
-    allowed_phrases = {p.lower() for p in _extract_capitalized_phrases(master_text)} | {p.lower() for p in _extract_capitalized_phrases(job_text)}
+    allowed_phrases = {p.lower() for p in _extract_capitalized_phrases(master_text)} | {
+        p.lower() for p in _extract_capitalized_phrases(job_text)
+    }
     for phrase in sorted(_extract_capitalized_phrases(output_text)):
         lower = phrase.lower()
         if lower not in allowed_phrases and lower not in COMMON_SECTION_WORDS:
-            issues.append(ValidationIssue(
-                severity="low",
-                category="new proper noun",
-                message="Output introduces a named entity not seen in the source inputs.",
-                evidence=phrase,
-                suggestion="Confirm this name is real and supported before sending.",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="low",
+                    category="new proper noun",
+                    message="Output introduces a named entity not seen in the source inputs.",
+                    evidence=phrase,
+                    suggestion="Confirm this name is real and supported before sending.",
+                )
+            )
 
     for bullet in _extract_bullets(output_text):
         similarity = _line_similarity(bullet, master_bullets)
         novel = [tok for tok in _meaningful_tokens(bullet) if tok not in grounded_tokens]
-        has_metric = bool(re.search(r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))", bullet, re.IGNORECASE))
+        has_metric = bool(
+            re.search(
+                r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))", bullet, re.IGNORECASE
+            )
+        )
         if has_metric and novel:
-            issues.append(ValidationIssue(
-                severity="high",
-                category="unsupported claim",
-                message="Bullet introduces metrics or specifics not grounded in the source inputs.",
-                evidence=bullet,
-                suggestion="Only keep metrics that exist in the master resume or can be verified.",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="high",
+                    category="unsupported claim",
+                    message="Bullet introduces metrics or specifics not grounded in the source inputs.",
+                    evidence=bullet,
+                    suggestion="Only keep metrics that exist in the master resume or can be verified.",
+                )
+            )
         elif similarity < 0.33 and len(novel) >= 3:
-            issues.append(ValidationIssue(
-                severity="medium",
-                category="suspicious rewrite",
-                message="Bullet departs substantially from the closest source bullet.",
-                evidence=bullet,
-                suggestion="Compare this line to the source and trim invented detail.",
-            ))
+            issues.append(
+                ValidationIssue(
+                    severity="medium",
+                    category="suspicious rewrite",
+                    message="Bullet departs substantially from the closest source bullet.",
+                    evidence=bullet,
+                    suggestion="Compare this line to the source and trim invented detail.",
+                )
+            )
 
     output_skills = _extract_skill_mentions(output_text)
     allowed_skills = _extract_skill_mentions(master_text) | _extract_skill_mentions(job_text)
     for skill in sorted(output_skills - allowed_skills):
-        issues.append(ValidationIssue(
-            severity="medium",
-            category="unsupported skill",
-            message="Output claims a skill not found in the master resume or job posting.",
-            evidence=skill,
-            suggestion="Remove or verify the skill before using this output.",
-        ))
+        issues.append(
+            ValidationIssue(
+                severity="medium",
+                category="unsupported skill",
+                message="Output claims a skill not found in the master resume or job posting.",
+                evidence=skill,
+                suggestion="Remove or verify the skill before using this output.",
+            )
+        )
 
     issues = _dedupe_issues(issues)
     penalty = sum(_issue_weight(issue) for issue in issues)
@@ -271,5 +393,7 @@ def validate_outputs(
     if tailored_resume_text:
         targets.append(validate_text(master_text, job_text, tailored_resume_text, label="resume"))
     if cover_letter_text:
-        targets.append(validate_text(master_text, job_text, cover_letter_text, label="cover-letter"))
+        targets.append(
+            validate_text(master_text, job_text, cover_letter_text, label="cover-letter")
+        )
     return ValidationReport(targets=targets)

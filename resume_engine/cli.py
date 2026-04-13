@@ -630,7 +630,12 @@ def check():
 
 
 @main.command()
-@click.option("--strict", is_flag=True, default=False, help="Exit with a non-zero status if any required checks fail")
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Exit with a non-zero status if any required checks fail",
+)
 def doctor(strict):
     """Diagnose local setup issues before you tailor or export."""
     from .doctor import run_diagnostics, summarize_results
@@ -642,7 +647,9 @@ def doctor(strict):
     results = run_diagnostics()
     for result in results:
         label = status_labels[result.status]
-        console.print(f"[{status_styles[result.status]}]{label}[/{status_styles[result.status]}] {result.name}: {result.detail}")
+        console.print(
+            f"[{status_styles[result.status]}]{label}[/{status_styles[result.status]}] {result.name}: {result.detail}"
+        )
 
     passed, warned, failed = summarize_results(results)
     console.print(f"[bold]Summary:[/bold] {passed} passed, {warned} warning(s), {failed} failed")
@@ -936,7 +943,9 @@ def config_reset():
 @click.option(
     "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def score_cmd(resume, brief, json_output):
     """Score a resume's overall quality (0-100) across 5 dimensions.
 
@@ -1037,8 +1046,8 @@ def score_cmd(resume, brief, json_output):
 
     console.print("")
 
-@main.command("optimize")
 
+@main.command("optimize")
 @click.argument("resume", type=click.Path(exists=True))
 @click.option("--output", default=None, help="Output file path (default: <resume>-optimized.md)")
 @click.option(
@@ -1152,8 +1161,6 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     console.print("")
 
 
-
-
 @main.command("interview")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
 @click.option(
@@ -1163,8 +1170,10 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option(
-    "--count", default=10, show_default=True,
-    help="Number of questions to generate (5-20 recommended)"
+    "--count",
+    default=10,
+    show_default=True,
+    help="Number of questions to generate (5-20 recommended)",
 )
 @click.option(
     "--model",
@@ -1172,14 +1181,20 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     type=click.Choice(["ollama", "openai", "anthropic"]),
 )
 @click.option(
-    "--with-followups", "with_followups", is_flag=True, default=False,
+    "--with-followups",
+    "with_followups",
+    is_flag=True,
+    default=False,
     help="Also generate likely follow-up/probing questions on resume specifics",
 )
 @click.option(
-    "--output", default=None,
+    "--output",
+    default=None,
     help="Save prep sheet to a markdown file",
 )
-def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output):
+def interview(
+    master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output
+):
     """Generate tailored interview questions with STAR-method answer frameworks.
 
     Analyzes the job posting and your resume to predict likely questions
@@ -1207,6 +1222,7 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
 
     console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
@@ -1240,6 +1256,7 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
     if result.questions:
         # Group by category for display
         from collections import defaultdict
+
         by_cat = defaultdict(list)
         for q in result.questions:
             by_cat[q.category].append(q)
@@ -1295,7 +1312,9 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
 
 @main.command("cover-score")
 @click.argument("cover_letter", type=click.Path(exists=True))
-@click.option("--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)")
+@click.option(
+    "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
+)
 def cover_score_cmd(cover_letter, brief):
     """Score a cover letter's quality (0-100) across 5 dimensions.
 
@@ -1352,7 +1371,9 @@ def cover_score_cmd(cover_letter, brief):
 
     for dim in result.dimensions:
         bar_filled = int(dim.pct / 5)
-        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        bar = (
+            "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        )
         pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
         table.add_row(
             dim.name,
@@ -1394,8 +1415,6 @@ def cover_score_cmd(cover_letter, brief):
     console.print("")
 
 
-
-
 @main.group()
 def track():
     """Track job applications in a local SQLite log.
@@ -1416,7 +1435,9 @@ def track():
 @track.command("add")
 @click.option("--company", required=True, help="Company name")
 @click.option("--role", required=True, help="Job title / role")
-@click.option("--date", "applied_date", default=None, help="Date applied (YYYY-MM-DD, default: today)")
+@click.option(
+    "--date", "applied_date", default=None, help="Date applied (YYYY-MM-DD, default: today)"
+)
 @click.option(
     "--status",
     default="applied",
@@ -1556,10 +1577,12 @@ def track_show(app_id):
 
     style = STATUS_STYLES.get(row["status"], "white")
     console.print("")
-    console.print(Panel(
-        f"[bold]#{row['id']}[/bold]  {row['company']}  --  {row['role']}",
-        style="blue",
-    ))
+    console.print(
+        Panel(
+            f"[bold]#{row['id']}[/bold]  {row['company']}  --  {row['role']}",
+            style="blue",
+        )
+    )
     console.print(f"  Date applied:  {row['date']}")
     console.print(f"  Status:        [{style}]{row['status']}[/{style}]")
     if row.get("url"):
@@ -1637,8 +1660,6 @@ def track_stats():
         console.print(f"  [{style}]{s:<12}[/{style}]  {count:>4}  [dim]{bar}[/dim]")
 
     console.print("")
-
-
 
 
 @main.command("fit")
@@ -1862,9 +1883,15 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
     has_high = False
 
     for target in report.targets:
-        score_style = "bold green" if target.score >= 85 else ("bold yellow" if target.score >= 65 else "bold red")
+        score_style = (
+            "bold green"
+            if target.score >= 85
+            else ("bold yellow" if target.score >= 65 else "bold red")
+        )
         console.print("")
-        console.print(f"[bold]{target.label.title()}[/bold] trust score: [{score_style}]{target.score}/100[/{score_style}]")
+        console.print(
+            f"[bold]{target.label.title()}[/bold] trust score: [{score_style}]{target.score}/100[/{score_style}]"
+        )
         md_lines.append(f"## {target.label.title()}\n")
         md_lines.append(f"Trust score: {target.score}/100\n")
 
@@ -1882,7 +1909,9 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
         for issue in target.issues:
             if issue.severity == "high":
                 has_high = True
-            sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(issue.severity, "white")
+            sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(
+                issue.severity, "white"
+            )
             table.add_row(
                 f"[{sev_style}]{issue.severity}[/{sev_style}]",
                 issue.category,
@@ -1899,9 +1928,13 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
 
     console.print("")
     if has_high:
-        console.print("[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything.")
+        console.print(
+            "[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything."
+        )
     else:
-        console.print("[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence.")
+        console.print(
+            "[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence."
+        )
 
     if output:
         with open(output, "w") as f:
@@ -1949,7 +1982,9 @@ def init_cmd(output):
     data.name = click.prompt("  Full name", type=str)
     data.email = click.prompt("  Email", type=str, default="", show_default=False)
     data.phone = click.prompt("  Phone", type=str, default="", show_default=False)
-    data.location = click.prompt("  Location (city, state)", type=str, default="", show_default=False)
+    data.location = click.prompt(
+        "  Location (city, state)", type=str, default="", show_default=False
+    )
     data.linkedin = click.prompt("  LinkedIn URL", type=str, default="", show_default=False)
     data.website = click.prompt("  Website/portfolio URL", type=str, default="", show_default=False)
 
@@ -1960,7 +1995,9 @@ def init_cmd(output):
 
     # Skills
     console.print("\n[bold cyan]Skills[/bold cyan]")
-    console.print("  [dim]Enter skills separated by commas (e.g. Python, AWS, Project Management).[/dim]")
+    console.print(
+        "  [dim]Enter skills separated by commas (e.g. Python, AWS, Project Management).[/dim]"
+    )
     skills_raw = click.prompt("  Skills", type=str, default="", show_default=False)
     if skills_raw.strip():
         data.skills = [s.strip() for s in skills_raw.split(",") if s.strip()]
@@ -1971,7 +2008,9 @@ def init_cmd(output):
 
     while True:
         console.print("")
-        company = click.prompt("  Company name (blank to finish)", type=str, default="", show_default=False)
+        company = click.prompt(
+            "  Company name (blank to finish)", type=str, default="", show_default=False
+        )
         if not company.strip():
             break
         title = click.prompt("  Job title", type=str)
@@ -1981,13 +2020,21 @@ def init_cmd(output):
         console.print("  [dim]Add bullet points for this role. Leave blank to stop.[/dim]")
         bullets: list[str] = []
         while True:
-            bullet = click.prompt(f"    Bullet {len(bullets) + 1}", type=str, default="", show_default=False)
+            bullet = click.prompt(
+                f"    Bullet {len(bullets) + 1}", type=str, default="", show_default=False
+            )
             if not bullet.strip():
                 break
             bullets.append(bullet.strip())
 
         data.experience.append(
-            Experience(company=company.strip(), title=title.strip(), start=start.strip(), end=end.strip(), bullets=bullets)
+            Experience(
+                company=company.strip(),
+                title=title.strip(),
+                start=start.strip(),
+                end=end.strip(),
+                bullets=bullets,
+            )
         )
 
     # Education
@@ -1996,7 +2043,9 @@ def init_cmd(output):
 
     while True:
         console.print("")
-        school = click.prompt("  School name (blank to finish)", type=str, default="", show_default=False)
+        school = click.prompt(
+            "  School name (blank to finish)", type=str, default="", show_default=False
+        )
         if not school.strip():
             break
         degree = click.prompt("  Degree (e.g. B.S. Computer Science)", type=str)
@@ -2011,7 +2060,9 @@ def init_cmd(output):
     console.print("  [dim]Add certifications one at a time. Leave blank to stop.[/dim]")
 
     while True:
-        cert = click.prompt("  Certification (blank to finish)", type=str, default="", show_default=False)
+        cert = click.prompt(
+            "  Certification (blank to finish)", type=str, default="", show_default=False
+        )
         if not cert.strip():
             break
         data.certifications.append(cert.strip())

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from .llm import complete
 
@@ -77,6 +77,7 @@ RESUME:
 # Parsing
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class InterviewQuestion:
     number: int
@@ -131,16 +132,20 @@ def _parse_questions(text: str) -> List[InterviewQuestion]:
         category = cat_match.group(1).strip() if cat_match else "General"
 
         # Extract STAR Framework
-        star_match = re.search(r"STAR Framework:\s*(.+?)(?:\n\d+\.|$)", block, re.IGNORECASE | re.DOTALL)
+        star_match = re.search(
+            r"STAR Framework:\s*(.+?)(?:\n\d+\.|$)", block, re.IGNORECASE | re.DOTALL
+        )
         framework = star_match.group(1).strip() if star_match else ""
 
         if question_text:
-            questions.append(InterviewQuestion(
-                number=number,
-                question=question_text,
-                category=category,
-                framework=framework,
-            ))
+            questions.append(
+                InterviewQuestion(
+                    number=number,
+                    question=question_text,
+                    category=category,
+                    framework=framework,
+                )
+            )
 
     return questions
 
@@ -169,15 +174,19 @@ def _parse_followups(text: str) -> List[FollowupQuestion]:
                 question_lines.append(stripped)
         question_text = " ".join(question_lines).strip()
 
-        probing_match = re.search(r"Probing:\s*(.+?)(?:\n\d+\.|$)", block, re.IGNORECASE | re.DOTALL)
+        probing_match = re.search(
+            r"Probing:\s*(.+?)(?:\n\d+\.|$)", block, re.IGNORECASE | re.DOTALL
+        )
         probing = probing_match.group(1).strip() if probing_match else ""
 
         if question_text:
-            followups.append(FollowupQuestion(
-                number=number,
-                question=question_text,
-                probing=probing,
-            ))
+            followups.append(
+                FollowupQuestion(
+                    number=number,
+                    question=question_text,
+                    probing=probing,
+                )
+            )
 
     return followups
 
@@ -185,6 +194,7 @@ def _parse_followups(text: str) -> List[FollowupQuestion]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def generate_interview_prep(
     resume_text: str,
