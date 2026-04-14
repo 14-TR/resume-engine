@@ -58,6 +58,27 @@ resume-engine ats \
   --tailored tailored-resume.md
 ```
 
+### Validate grounded output
+
+Run the trust check before sending anything:
+
+```bash
+resume-engine validate \
+  --master examples/master-resume.md \
+  --job examples/job-posting.txt \
+  --resume tailored-resume.md
+```
+
+For CI, editor integrations, or scripting, emit JSON:
+
+```bash
+resume-engine validate \
+  --master examples/master-resume.md \
+  --job examples/job-posting.txt \
+  --resume tailored-resume.md \
+  --json > validation.json
+```
+
 ### Import a raw resume
 
 Convert unstructured text into a structured master resume:
@@ -140,3 +161,16 @@ resume-engine tailor \
   --model openai \
   --output tailored-resume.md
 ```
+
+
+## Automation Tips
+
+If you want to build a repeatable application pipeline, combine these JSON-capable commands:
+
+- `resume-engine score --json`
+- `resume-engine cover-score --json`
+- `resume-engine fit --json`
+- `resume-engine interview --json`
+- `resume-engine validate --json`
+
+That lets you score, assess fit, generate prep, and run a grounded validation pass without screen-scraping terminal output.

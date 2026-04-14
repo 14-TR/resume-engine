@@ -86,21 +86,23 @@ resume-engine score master-resume.md --json
 
 ### cover-score
 
-Instant cover letter quality score (0-100) across 5 dimensions: opening hook, company specificity, value proposition, length, and filler detection. No LLM required.
+Instant cover letter quality score (0-100) across 5 dimensions: opening hook, company specificity, value proposition, length, and filler detection. No LLM required. Use `--json` for automation-friendly output.
 
 ```bash
 resume-engine cover-score cover-letter.md
 resume-engine cover-score cover-letter.md --brief
+resume-engine cover-score cover-letter.md --json
 ```
 
 ### validate
 
-Grounded trust check for tailored output. Compares a tailored resume and/or cover letter against your master resume plus the job posting, then flags likely unsupported claims, title drift, date drift, company drift, and suspicious rewrites.
+Grounded trust check for tailored output. Compares a tailored resume and/or cover letter against your master resume plus the job posting, then flags likely unsupported claims, title drift, date drift, company drift, and suspicious rewrites. Use `--json` to gate application workflows in scripts or CI before anything gets sent.
 
 ```bash
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 resume-engine validate --master resume.md --job posting.txt --cover-letter cover-letter.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover-letter.md --output validation-report.md
+resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
 ```
 
 ### optimize
@@ -184,6 +186,36 @@ Check your local environment before tailoring, exporting PDFs, or switching prov
 ```bash
 resume-engine doctor
 resume-engine doctor --strict
+```
+
+## Automation and CI
+
+Resume Engine can emit machine-readable JSON for scoring and review steps:
+
+- `resume-engine score --json`
+- `resume-engine cover-score --json`
+- `resume-engine fit --json`
+- `resume-engine interview --json`
+- `resume-engine validate --json`
+
+Example gate that fails fast when grounded validation finds issues:
+
+```bash
+resume-engine validate \
+  --master resume.md \
+  --job posting.txt \
+  --resume tailored.md \
+  --json > validation.json
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path('validation.json').read_text())
+if report.get('risk_level') in {'high', 'medium'}:
+    raise SystemExit('Validation gate failed: review validation.json before sending')
+print('Validation gate passed')
+PY
 ```
 
 ### config

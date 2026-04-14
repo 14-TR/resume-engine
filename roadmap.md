@@ -40,3 +40,4 @@
 23. ~~Machine-readable job fit output (`resume-engine fit --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
 24. ~~Machine-readable interview prep output (`resume-engine interview --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
 25. ~~Machine-readable grounded validation output (`resume-engine validate --json`) -- emit structured JSON for CI checks, editor integrations, and scripted review workflows~~ (done)
+26. ~~Automation docs refresh -- document JSON-first workflows for score, cover-score, fit, interview, and validate so CI and script users can discover them from the README, docs site, and examples~~ (done)
