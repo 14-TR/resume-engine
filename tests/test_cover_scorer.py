@@ -371,6 +371,28 @@ class TestCoverScoreCLI:
         # Brief mode should not show the full dimension table
         assert "Suggestions" not in result.output
 
+    def test_cover_score_json_flag(self, tmp_path):
+        import json
+
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        cover_file = tmp_path / "cover.md"
+        cover_file.write_text(STRONG_COVER)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["cover-score", str(cover_file), "--json"])
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["cover_letter"] == str(cover_file)
+        assert payload["grade"]["letter"] == "A"
+        assert payload["total"] >= 85
+        assert len(payload["dimensions"]) == 5
+        assert payload["has_company_name"] is True
+        assert payload["has_role_name"] is True
+        assert payload["generic_opener"] is False
+
     def test_cover_score_missing_file(self):
         from click.testing import CliRunner
 

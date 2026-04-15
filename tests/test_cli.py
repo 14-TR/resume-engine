@@ -97,6 +97,11 @@ class TestCLIHelp:
         assert "--format" in result.output
         assert "--output" in result.output
 
+    def test_cover_score_help(self, runner):
+        result = runner.invoke(main, ["cover-score", "--help"])
+        assert result.exit_code == 0
+        assert "--json" in result.output
+
 
 class TestATSCommand:
     def test_ats_requires_job(self, runner, tmp_path):

@@ -1331,17 +1331,24 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
 @click.option(
     "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
 )
-def cover_score_cmd(cover_letter, brief):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def cover_score_cmd(cover_letter, brief, json_output):
     """Score a cover letter's quality (0-100) across 5 dimensions.
 
     Checks opening hook, company/role specificity, value proposition,
     length, and filler language. No LLM required -- runs instantly.
 
-    \b
+    
     Examples:
       resume-engine cover-score cover-letter.md
       resume-engine cover-score cover-letter.md --brief
+      resume-engine cover-score cover-letter.md --json
     """
+    import json
+    from dataclasses import asdict
+
     from rich.table import Table
 
     from .cover_scorer import score_cover_letter
@@ -1350,8 +1357,6 @@ def cover_score_cmd(cover_letter, brief):
         text = f.read()
 
     result = score_cover_letter(text)
-    console.print("")
-    console.print(Panel(f"[bold]Cover Letter Quality Score[/bold]   {cover_letter}", style="blue"))
 
     total = result.total
     if total >= 85:
@@ -1371,6 +1376,15 @@ def cover_score_cmd(cover_letter, brief):
         grade_style = "bold red"
         grade_label = "Significant gaps"
 
+    if json_output:
+        payload = asdict(result)
+        payload["cover_letter"] = cover_letter
+        payload["grade"] = {"letter": grade, "label": grade_label}
+        console.print_json(json.dumps(payload))
+        return
+
+    console.print("")
+    console.print(Panel(f"[bold]Cover Letter Quality Score[/bold]   {cover_letter}", style="blue"))
     console.print(
         f"\n  Overall score: [{grade_style}]{total}/100  Grade {grade}  {grade_label}[/{grade_style}]"
         f"   ({result.word_count} words)\n"
