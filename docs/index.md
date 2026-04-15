@@ -24,6 +24,12 @@ Resume Engine takes your master resume and a job posting, and produces a tailore
 | `tailor` | Tailor resume to a specific job |
 | `cover` | Generate a cover letter |
 | `package` | Full application (resume + cover letter) |
+| `score` | Score resume quality instantly, with optional JSON output |
+| `cover-score` | Score cover letter quality instantly, with optional JSON output |
+| `fit` | Estimate whether a role is worth applying to before tailoring |
+| `interview` | Generate tailored interview prep, with optional JSON output |
+| `validate` | Run grounded trust checks before sending anything |
+| `doctor` | Diagnose local setup issues before you start |
 | `ats` | Analyze keyword match score |
 | `batch` | Tailor to multiple jobs at once |
 | `import` | Convert raw resume text to master format |
@@ -54,3 +60,16 @@ resume-engine ats --resume master-resume.md --job job-posting.txt --tailored tai
 - **New here?** Follow the [Quick Start](getting-started/quickstart.md) guide.
 - **Have a resume to import?** See [Import from LinkedIn](tutorials/import-from-linkedin.md).
 - **Applying to many jobs?** Jump straight to [Batch Mode](tutorials/batch-mode.md).
+
+
+## Automation-Friendly Workflows
+
+Resume Engine is not just a document generator. It can also act like a quality gate in local scripts and CI. The key commands with JSON output are:
+
+- `resume-engine score --json`
+- `resume-engine cover-score --json`
+- `resume-engine fit --json`
+- `resume-engine interview --json`
+- `resume-engine validate --json`
+
+A practical pattern is to tailor first, then run `validate --json` and only continue if the result looks safe. That gives you a grounded trust check before you send a resume or cover letter anywhere.

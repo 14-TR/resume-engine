@@ -36,3 +36,8 @@
 
 20. ~~Machine-readable scoring output (`resume-engine score --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
 21. ~~Environment doctor (`resume-engine doctor`) -- backend-aware setup diagnostics for Python version, configured default model, Ollama reachability, API keys, and PDF tooling; supports `--strict` for CI and scripted setup checks~~ (done)
+22. ~~Machine-readable cover letter scoring output (`resume-engine cover-score --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
+23. ~~Machine-readable job fit output (`resume-engine fit --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
+24. ~~Machine-readable interview prep output (`resume-engine interview --json`) -- emit structured JSON for scripting, dashboards, and CI checks~~ (done)
+25. ~~Machine-readable grounded validation output (`resume-engine validate --json`) -- emit structured JSON for CI checks, editor integrations, and scripted review workflows~~ (done)
+26. ~~Automation docs refresh -- document JSON-first workflows for score, cover-score, fit, interview, and validate so CI and script users can discover them from the README, docs site, and examples~~ (done)

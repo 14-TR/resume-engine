@@ -1192,9 +1192,8 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     default=None,
     help="Save prep sheet to a markdown file",
 )
-def interview(
-    master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output
-):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output, json_output):
     """Generate tailored interview questions with STAR-method answer frameworks.
 
     Analyzes the job posting and your resume to predict likely questions
@@ -1207,13 +1206,18 @@ def interview(
       resume-engine interview --master resume.md --job posting.txt
       resume-engine interview --master resume.md --job-url https://example.com/jobs/123 --count 15
       resume-engine interview --master resume.md --job posting.txt --with-followups --output prep.md
+      resume-engine interview --master resume.md --job posting.txt --json
     """
+    import json
+    from dataclasses import asdict
+
     from .interview import generate_interview_prep
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1225,7 +1229,8 @@ def interview(
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
 
     result = generate_interview_prep(
         master_text,
@@ -1234,6 +1239,17 @@ def interview(
         count=count,
         with_followups=with_followups,
     )
+
+    if json_output:
+        payload = asdict(result)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["model"] = model
+        payload["count"] = count
+        payload["with_followups"] = with_followups
+        console.print_json(json.dumps(payload))
+        return
 
     # Category colors
     CATEGORY_STYLES = {
@@ -1681,7 +1697,8 @@ def track_stats():
     default=None,
     help="Save full fit report to a markdown file",
 )
-def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output, json_output):
     """Score how well you fit a job posting (0-100) before applying.
 
     Combines ATS keyword analysis with LLM-powered evaluation of skills
@@ -1693,13 +1710,18 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
       resume-engine fit --master resume.md --job posting.txt
       resume-engine fit --master resume.md --job-url https://example.com/jobs/123
       resume-engine fit --master resume.md --job posting.txt --model openai --output report.md
+      resume-engine fit --master resume.md --job posting.txt --json
     """
+    import json
+    from dataclasses import asdict
+
     from .fit import assess_fit
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1711,9 +1733,19 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Running fit analysis with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Running fit analysis with {model}...[/dim]")
 
     result = assess_fit(master_text, job_text, model=model)
+
+    if json_output:
+        payload = asdict(result)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["model"] = model
+        console.print_json(json.dumps(payload))
+        return
 
     # Recommendation style
     REC_STYLES = {
@@ -1821,6 +1853,7 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
         console.print("")
 
 
+
 @main.command("validate")
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
@@ -1828,7 +1861,8 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
 @click.option("--cover-letter", default=None, help="Path to cover letter output")
 @click.option("--output", default=None, help="Save the validation report to markdown")
-def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
     """Validate tailored output against the source resume and job posting.
 
     Flags likely unsupported claims, title/date/company drift, and
@@ -1839,7 +1873,11 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md
       resume-engine validate --master resume.md --job posting.txt --cover-letter cover.md
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover.md
+      resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
     """
+    import json
+    from dataclasses import asdict
+
     from rich.table import Table
 
     from .validate import validate_outputs
@@ -1849,7 +1887,8 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
     if not resume_output and not cover_letter:
         raise click.UsageError("Provide --resume, --cover-letter, or both")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
     with open(master) as f:
         master_text = f.read()
@@ -1878,6 +1917,16 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
         tailored_resume_text=resume_text,
         cover_letter_text=cover_text,
     )
+
+    if json_output:
+        payload = asdict(report)
+        payload["master"] = master
+        payload["job"] = job
+        payload["job_url"] = job_url
+        payload["resume"] = resume_output
+        payload["cover_letter"] = cover_letter
+        console.print_json(json.dumps(payload))
+        return
 
     md_lines = ["# Validation Report\n"]
     has_high = False

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from unittest.mock import patch
 
 from resume_engine.interview import (
@@ -363,3 +365,50 @@ class TestInterviewCLI:
 
         call_kwargs = mock_gen.call_args
         assert call_kwargs[1].get("count") == 15 or 15 in call_kwargs[0]
+
+    def test_json_output(self, tmp_path):
+        from click.testing import CliRunner
+        from resume_engine.cli import main
+
+        resume_file = tmp_path / "resume.md"
+        resume_file.write_text(SAMPLE_RESUME)
+        job_file = tmp_path / "job.txt"
+        job_file.write_text(SAMPLE_JOB)
+
+        prep_result = InterviewPrepResult(
+            questions=_parse_questions(SAMPLE_QUESTIONS_RAW),
+            followups=_parse_followups(SAMPLE_FOLLOWUPS_RAW),
+            raw_questions=SAMPLE_QUESTIONS_RAW,
+            raw_followups=SAMPLE_FOLLOWUPS_RAW,
+        )
+
+        with patch(
+            "resume_engine.interview.generate_interview_prep",
+            return_value=prep_result,
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                main,
+                [
+                    "interview",
+                    "--master", str(resume_file),
+                    "--job", str(job_file),
+                    "--count", "4",
+                    "--with-followups",
+                    "--model", "anthropic",
+                    "--json",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["master"] == str(resume_file)
+        assert payload["job"] == str(job_file)
+        assert payload["job_url"] is None
+        assert payload["model"] == "anthropic"
+        assert payload["count"] == 4
+        assert payload["with_followups"] is True
+        assert len(payload["questions"]) == 4
+        assert len(payload["followups"]) == 2
+        assert payload["questions"][0]["category"] == "Behavioral"
+        assert "Probing:" in payload["raw_followups"]
