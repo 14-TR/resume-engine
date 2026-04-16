@@ -181,17 +181,19 @@ Valid statuses: `applied`, `screening`, `interview`, `offer`, `rejected`, `withd
 
 ### doctor
 
-Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken.
+Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
 
 ```bash
 resume-engine doctor
 resume-engine doctor --strict
+resume-engine doctor --json
 ```
 
 ## Automation and CI
 
-Resume Engine can emit machine-readable JSON for scoring and review steps:
+Resume Engine can emit machine-readable JSON for scoring, review, and environment checks:
 
+- `resume-engine doctor --json`
 - `resume-engine score --json`
 - `resume-engine cover-score --json`
 - `resume-engine fit --json`
