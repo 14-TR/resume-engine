@@ -66,6 +66,7 @@ resume-engine ats --resume master-resume.md --job job-posting.txt --tailored tai
 
 Resume Engine is not just a document generator. It can also act like a quality gate in local scripts and CI. The key commands with JSON output are:
 
+- `resume-engine doctor --json`
 - `resume-engine score --json`
 - `resume-engine cover-score --json`
 - `resume-engine fit --json`

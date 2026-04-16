@@ -636,15 +636,25 @@ def check():
     default=False,
     help="Exit with a non-zero status if any required checks fail",
 )
-def doctor(strict):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def doctor(strict, json_output):
     """Diagnose local setup issues before you tailor or export."""
-    from .doctor import run_diagnostics, summarize_results
+    import json
+
+    from .doctor import results_to_payload, run_diagnostics, summarize_results
 
     status_styles = {"pass": "green", "warn": "yellow", "fail": "red"}
     status_labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL"}
 
-    console.print(Panel("[bold]resume-engine[/bold] - environment doctor", style="blue"))
     results = run_diagnostics()
+
+    if json_output:
+        console.print_json(json.dumps(results_to_payload(results, strict=strict)))
+        if strict and any(result.required and result.status == "fail" for result in results):
+            raise click.ClickException("Doctor found required setup failures.")
+        return
+
+    console.print(Panel("[bold]resume-engine[/bold] - environment doctor", style="blue"))
     for result in results:
         label = status_labels[result.status]
         console.print(

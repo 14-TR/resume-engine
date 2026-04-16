@@ -119,3 +119,25 @@ def summarize_results(results: List[DiagnosticResult]) -> tuple[int, int, int]:
     warned = sum(1 for result in results if result.status == "warn")
     failed = sum(1 for result in results if result.status == "fail")
     return passed, warned, failed
+
+
+def results_to_payload(results: List[DiagnosticResult], strict: bool = False) -> dict:
+    passed, warned, failed = summarize_results(results)
+    return {
+        "strict": strict,
+        "summary": {
+            "passed": passed,
+            "warned": warned,
+            "failed": failed,
+        },
+        "all_required_passed": failed == 0,
+        "results": [
+            {
+                "name": result.name,
+                "status": result.status,
+                "detail": result.detail,
+                "required": result.required,
+            }
+            for result in results
+        ],
+    }
