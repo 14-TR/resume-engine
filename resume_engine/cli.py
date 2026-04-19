@@ -234,8 +234,9 @@ def tailor(
     default=lambda: _cfg_default("template"),
     help="Cover letter template/style (run `templates list` to see options)",
 )
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
 def cover(
-    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
+    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template, json_output
 ):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
@@ -243,7 +244,8 @@ def cover(
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -271,18 +273,52 @@ def cover(
 
     with open(output, "w") as f:
         f.write(result)
-    console.print(f"[green]Cover letter (markdown) written to {output}[/green]")
+    if not json_output:
+        console.print(f"[green]Cover letter (markdown) written to {output}[/green]")
 
+    pdf_output = None
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
         pdf_output = md_path_to_pdf_path(output)
         try:
-            console.print("[dim]Converting to PDF via pandoc...[/dim]")
+            if not json_output:
+                console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(output, pdf_output)
-            console.print(f"[green]PDF written to {pdf_output}[/green]")
+            if not json_output:
+                console.print(f"[green]PDF written to {pdf_output}[/green]")
         except RuntimeError as e:
-            console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+            pdf_output = None
+            if not json_output:
+                console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+
+    if json_output:
+        payload = _dashboard_payload(
+            "cover",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "interactive": interactive,
+            },
+            summary={
+                "cover_letter_chars": len(result),
+                "output_format": fmt,
+            },
+            artifacts={
+                "cover_letter_markdown": output,
+                "cover_letter_pdf": pdf_output,
+            },
+            data={
+                "cover_letter_markdown": result,
+            },
+        )
+        _print_dashboard_json(payload)
 
 
 @main.command()
