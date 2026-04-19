@@ -17,6 +17,9 @@ resume-engine tailor --master resume.md --job posting.txt --output tailored.md
 # Emit the same dashboard JSON schema used by review commands
 resume-engine tailor --master resume.md --job posting.txt --output tailored.md --json
 
+# Generate a cover letter and emit dashboard JSON for automation
+resume-engine cover --master resume.md --job posting.txt --output cover.md --json
+
 # Full application package (resume + cover letter + fit summary)
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 
@@ -83,11 +86,12 @@ resume-engine tailor --master resume.md --job posting.txt --output tailored.md -
 
 ### cover
 
-Generate a cover letter matched to the job posting and your experience.
+Generate a cover letter matched to the job posting and your experience. Use `--json` to emit the shared `resume-engine.dashboard/v1` schema while still writing the markdown output.
 
 ```bash
 resume-engine cover --master resume.md --job posting.txt --output cover.md
 resume-engine cover --master resume.md --job-url "https://example.com/jobs/123" --format pdf
+resume-engine cover --master resume.md --job posting.txt --output cover.md --json
 ```
 
 ### package
