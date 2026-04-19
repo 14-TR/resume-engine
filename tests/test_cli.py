@@ -467,6 +467,42 @@ class TestFitCommand:
         assert len(payload["data"]["dimensions"]) == 5
 
 
+class TestCoverCommand:
+    def test_cover_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        output_file = tmp_path / "cover.md"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: "Dear Team,\n\nI build Python systems.\n",
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "cover",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--output",
+                str(output_file),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "cover"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["artifacts"]["cover_letter_markdown"] == str(output_file)
+        assert payload["data"]["cover_letter_markdown"].startswith("Dear Team")
+        assert output_file.exists()
+
 class TestTailorCommand:
     def test_tailor_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
