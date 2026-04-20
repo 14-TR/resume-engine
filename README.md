@@ -14,11 +14,17 @@ pip install resume-engine
 # Tailor resume to a job posting
 resume-engine tailor --master resume.md --job posting.txt --output tailored.md
 
-# Full application package (resume + cover letter)
+# Emit the same dashboard JSON schema used by review commands
+resume-engine tailor --master resume.md --job posting.txt --output tailored.md --json
+
+# Generate a cover letter and emit dashboard JSON for automation
+resume-engine cover --master resume.md --job posting.txt --output cover.md --json
+
+# Full application package (resume + cover letter + fit summary)
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 
-# Generate a validation report with the package
-resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report
+# Generate a validation report and JSON manifest with the package
+resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report --json
 
 # Score your resume quality (instant, no LLM)
 resume-engine score resume.md
@@ -26,15 +32,40 @@ resume-engine score resume.md
 # Validate a tailored resume before sending
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 
+# Diagnose local setup issues before you start
+resume-engine doctor
+
 # Track where you've applied
 resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 ```
+
+
+## Review dashboard JSON schema
+
+`tailor`, `fit`, `interview`, `validate`, and `package` now share a stable machine-readable envelope for dashboards, CI, and agent workflows:
+
+```json
+{
+  "schema": "resume-engine.dashboard/v1",
+  "command": "fit",
+  "generated_at": "2026-04-18T10:00:00+00:00",
+  "inputs": {},
+  "summary": {},
+  "artifacts": {},
+  "data": {}
+}
+```
+
+- `inputs`: normalized command inputs
+- `summary`: headline metrics for dashboards
+- `artifacts`: related markdown/PDF/package paths
+- `data`: full command-specific payload
 
 ## Commands
 
 ### tailor
 
-Rewrite your resume to match a specific job posting. Reorders sections, emphasizes relevant experience, and matches keywords.
+Rewrite your resume to match a specific job posting. Reorders sections, emphasizes relevant experience, and matches keywords. Use `--json` to emit the shared `resume-engine.dashboard/v1` review schema while still writing the tailored markdown file.
 
 ```bash
 resume-engine tailor --master resume.md --job posting.txt --output tailored.md
@@ -50,25 +81,27 @@ resume-engine tailor --master resume.md --job posting.txt --interactive
 
 # PDF output
 resume-engine tailor --master resume.md --job posting.txt --format pdf
+resume-engine tailor --master resume.md --job posting.txt --output tailored.md --json
 ```
 
 ### cover
 
-Generate a cover letter matched to the job posting and your experience.
+Generate a cover letter matched to the job posting and your experience. Use `--json` to emit the shared `resume-engine.dashboard/v1` schema while still writing the markdown output.
 
 ```bash
 resume-engine cover --master resume.md --job posting.txt --output cover.md
 resume-engine cover --master resume.md --job-url "https://example.com/jobs/123" --format pdf
+resume-engine cover --master resume.md --job posting.txt --output cover.md --json
 ```
 
 ### package
 
-Generate a complete application package (tailored resume + cover letter) in one command. Optionally include a grounded validation report in the same output folder before you send anything.
+Generate a complete application package in one command. The bundle now includes a tailored resume, cover letter, and fit summary by default. Add a grounded validation report and a machine-readable manifest in the shared `resume-engine.dashboard/v1` schema when you want stricter review or automation.
 
 ```bash
 resume-engine package --master resume.md --job posting.txt --outdir ./application/
 resume-engine package --master resume.md --job posting.txt --outdir ./app/ --format pdf
-resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report
+resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report --json
 ```
 
 ### score
@@ -83,21 +116,23 @@ resume-engine score master-resume.md --json
 
 ### cover-score
 
-Instant cover letter quality score (0-100) across 5 dimensions: opening hook, company specificity, value proposition, length, and filler detection. No LLM required.
+Instant cover letter quality score (0-100) across 5 dimensions: opening hook, company specificity, value proposition, length, and filler detection. No LLM required. Use `--json` for automation-friendly output.
 
 ```bash
 resume-engine cover-score cover-letter.md
 resume-engine cover-score cover-letter.md --brief
+resume-engine cover-score cover-letter.md --json
 ```
 
 ### validate
 
-Grounded trust check for tailored output. Compares a tailored resume and/or cover letter against your master resume plus the job posting, then flags likely unsupported claims, title drift, date drift, company drift, and suspicious rewrites.
+Grounded trust check for tailored output. Compares a tailored resume and/or cover letter against your master resume plus the job posting, then flags likely unsupported claims, title drift, date drift, company drift, and suspicious rewrites. Use `--json` to gate application workflows in scripts or CI with the shared `resume-engine.dashboard/v1` schema before anything gets sent.
 
 ```bash
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 resume-engine validate --master resume.md --job posting.txt --cover-letter cover-letter.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover-letter.md --output validation-report.md
+resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
 ```
 
 ### optimize
@@ -113,7 +148,7 @@ resume-engine optimize master-resume.md --diff       # section-level diff
 
 ### interview
 
-Predict likely interview questions with STAR-method answer frameworks tailored to your real experience. Categories: Behavioral, Technical, Culture Fit, and Resume Deep-Dive.
+Predict likely interview questions with STAR-method answer frameworks tailored to your real experience. Categories: Behavioral, Technical, Culture Fit, and Resume Deep-Dive. Use `--json` to emit the shared review dashboard schema for automation.
 
 ```bash
 resume-engine interview --master resume.md --job posting.txt
@@ -174,6 +209,47 @@ resume-engine track delete 3
 
 Valid statuses: `applied`, `screening`, `interview`, `offer`, `rejected`, `withdrawn`.
 
+### doctor
+
+Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
+
+```bash
+resume-engine doctor
+resume-engine doctor --strict
+resume-engine doctor --json
+```
+
+## Automation and CI
+
+Resume Engine can emit machine-readable JSON for scoring, review, and environment checks:
+
+- `resume-engine doctor --json`
+- `resume-engine score --json`
+- `resume-engine cover-score --json`
+- `resume-engine fit --json`
+- `resume-engine interview --json`
+- `resume-engine validate --json`
+
+Example gate that fails fast when grounded validation finds issues:
+
+```bash
+resume-engine validate \
+  --master resume.md \
+  --job posting.txt \
+  --resume tailored.md \
+  --json > validation.json
+
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path('validation.json').read_text())
+if report.get('risk_level') in {'high', 'medium'}:
+    raise SystemExit('Validation gate failed: review validation.json before sending')
+print('Validation gate passed')
+PY
+```
+
 ### config
 
 Save defaults so you don't repeat flags on every command.
@@ -217,6 +293,9 @@ resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./application
 
 # From a JSON manifest
 resume-engine batch --master resume.md --manifest batch-manifest.json --outdir ./applications/
+
+# Emit the shared dashboard JSON schema for automation or CI
+resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./applications/ --json
 ```
 
 Output structure:

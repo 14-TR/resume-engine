@@ -2,11 +2,42 @@
 
 from __future__ import annotations
 
+import json
+
 import click
 from rich.console import Console
 from rich.panel import Panel
 
 console = Console()
+
+
+def _dashboard_payload(
+    command: str,
+    *,
+    inputs: dict,
+    summary: dict | None = None,
+    artifacts: dict | None = None,
+    data=None,
+) -> dict:
+    """Build a stable machine-readable dashboard envelope for CLI review flows."""
+    from datetime import datetime, timezone
+
+    return {
+        "schema": "resume-engine.dashboard/v1",
+        "command": command,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "inputs": inputs,
+        "summary": summary or {},
+        "artifacts": artifacts or {},
+        "data": data,
+    }
+
+
+def _print_dashboard_json(payload: dict) -> None:
+    """Render dashboard payloads consistently across commands."""
+    import json
+
+    console.print_json(json.dumps(payload))
 
 
 def _cfg_default(key: str, fallback=None):
@@ -81,8 +112,21 @@ def main():
     default=lambda: _cfg_default("template"),
     help="Resume template/style (run `templates list` to see options)",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def tailor(
-    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    output,
+    model,
+    fmt,
+    interactive,
+    template,
+    json_output,
 ):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
@@ -90,11 +134,13 @@ def tailor(
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- tailoring resume", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- tailoring resume", style="blue"))
 
     # Load master resume
     master_text = _load_master(master, linkedin_url, linkedin_export)
-    console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
+    if not json_output:
+        console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
 
     # Load job posting
     if job:
@@ -105,7 +151,8 @@ def tailor(
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
+    if not json_output:
+        console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
 
     # Interactive gap-filling
     if interactive:
@@ -127,19 +174,53 @@ def tailor(
     md_output = output if output.endswith(".md") else output
     with open(md_output, "w") as f:
         f.write(result)
-    console.print(f"[green]Tailored resume (markdown) written to {md_output}[/green]")
+    if not json_output:
+        console.print(f"[green]Tailored resume (markdown) written to {md_output}[/green]")
 
+    pdf_output = None
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
         pdf_output = md_path_to_pdf_path(md_output)
         try:
-            console.print("[dim]Converting to PDF via pandoc...[/dim]")
+            if not json_output:
+                console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(md_output, pdf_output)
-            console.print(f"[green]PDF written to {pdf_output}[/green]")
+            if not json_output:
+                console.print(f"[green]PDF written to {pdf_output}[/green]")
         except RuntimeError as e:
-            console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
-            console.print("[yellow]Markdown output is still available.[/yellow]")
+            pdf_output = None
+            if not json_output:
+                console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+                console.print("[yellow]Markdown output is still available.[/yellow]")
+
+    if json_output:
+        payload = _dashboard_payload(
+            "tailor",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "interactive": interactive,
+            },
+            summary={
+                "resume_chars": len(result),
+                "output_format": fmt,
+            },
+            artifacts={
+                "resume_markdown": md_output,
+                "resume_pdf": pdf_output,
+            },
+            data={
+                "resume_markdown": result,
+            },
+        )
+        _print_dashboard_json(payload)
 
 
 @main.command()
@@ -174,8 +255,21 @@ def tailor(
     default=lambda: _cfg_default("template"),
     help="Cover letter template/style (run `templates list` to see options)",
 )
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def cover(
-    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    output,
+    model,
+    fmt,
+    interactive,
+    template,
+    json_output,
 ):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
@@ -183,7 +277,8 @@ def cover(
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -211,18 +306,52 @@ def cover(
 
     with open(output, "w") as f:
         f.write(result)
-    console.print(f"[green]Cover letter (markdown) written to {output}[/green]")
+    if not json_output:
+        console.print(f"[green]Cover letter (markdown) written to {output}[/green]")
 
+    pdf_output = None
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
         pdf_output = md_path_to_pdf_path(output)
         try:
-            console.print("[dim]Converting to PDF via pandoc...[/dim]")
+            if not json_output:
+                console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(output, pdf_output)
-            console.print(f"[green]PDF written to {pdf_output}[/green]")
+            if not json_output:
+                console.print(f"[green]PDF written to {pdf_output}[/green]")
         except RuntimeError as e:
-            console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+            pdf_output = None
+            if not json_output:
+                console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+
+    if json_output:
+        payload = _dashboard_payload(
+            "cover",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "interactive": interactive,
+            },
+            summary={
+                "cover_letter_chars": len(result),
+                "output_format": fmt,
+            },
+            artifacts={
+                "cover_letter_markdown": output,
+                "cover_letter_pdf": pdf_output,
+            },
+            data={
+                "cover_letter_markdown": result,
+            },
+        )
+        _print_dashboard_json(payload)
 
 
 @main.command()
@@ -255,6 +384,12 @@ def cover(
     default=False,
     help="Generate a grounded validation report alongside the package outputs.",
 )
+@click.option(
+    "--json/--no-json",
+    "json_output",
+    default=False,
+    help="Write a machine-readable package manifest JSON alongside the markdown outputs.",
+)
 def package(
     master,
     linkedin_url,
@@ -266,9 +401,12 @@ def package(
     fmt,
     template,
     validate_report,
+    json_output,
 ):
-    """Generate full application package (resume + cover letter)."""
+    """Generate full application package (resume + cover letter + fit summary)."""
+    import json
     import os
+    from dataclasses import asdict
 
     os.makedirs(outdir, exist_ok=True)
 
@@ -288,6 +426,7 @@ def package(
         raise click.UsageError("Provide either --job or --job-url")
 
     from .engine import generate_cover_letter, tailor_resume
+    from .fit import assess_fit
 
     resume = tailor_resume(master_text, job_text, model=model, template=template)
     resume_md = os.path.join(outdir, "resume.md")
@@ -301,6 +440,35 @@ def package(
         f.write(letter)
     console.print("[green]Cover letter (markdown) written[/green]")
 
+    fit_result = assess_fit(resume, job_text, model=model)
+    fit_summary_path = os.path.join(outdir, "fit-summary.md")
+    fit_lines = [
+        "# Fit Summary\n",
+        f"Score: {fit_result.total}/100\n",
+        f"Verdict: {fit_result.verdict}\n",
+        f"Recommendation: {fit_result.recommendation}\n",
+        f"ATS keyword match: {fit_result.ats_score}%\n\n",
+        "## Dimension Breakdown\n",
+    ]
+    for dim in fit_result.dimensions:
+        fit_lines.append(f"- {dim.name}: {dim.score}/{dim.max_score}\n")
+        for note in dim.notes:
+            fit_lines.append(f"  - {note}\n")
+    if fit_result.strengths:
+        fit_lines.append("\n## Strengths\n")
+        for item in fit_result.strengths:
+            fit_lines.append(f"- {item}\n")
+    if fit_result.gaps:
+        fit_lines.append("\n## Gaps / Risks\n")
+        for item in fit_result.gaps:
+            fit_lines.append(f"- {item}\n")
+    if fit_result.raw_analysis:
+        fit_lines.append("\n## Raw Analysis\n")
+        fit_lines.append(f"{fit_result.raw_analysis.rstrip()}\n")
+    with open(fit_summary_path, "w") as f:
+        f.writelines(fit_lines)
+    console.print(f"[green]Fit summary written to {fit_summary_path}[/green]")
+
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
@@ -308,10 +476,13 @@ def package(
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(resume_md, md_path_to_pdf_path(resume_md))
             markdown_to_pdf(cover_md, md_path_to_pdf_path(cover_md))
+            markdown_to_pdf(fit_summary_path, md_path_to_pdf_path(fit_summary_path))
             console.print("[green]PDFs generated[/green]")
         except RuntimeError as e:
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
 
+    report = None
+    validation_path = None
     if validate_report:
         from .validate import validate_outputs
 
@@ -342,6 +513,42 @@ def package(
         with open(validation_path, "w") as f:
             f.writelines(md_lines)
         console.print(f"[green]Validation report written to {validation_path}[/green]")
+
+    if json_output:
+        manifest_path = os.path.join(outdir, "package-summary.json")
+        payload = _dashboard_payload(
+            "package",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "validate_report": validate_report,
+            },
+            summary={
+                "fit_total": fit_result.total,
+                "fit_verdict": fit_result.verdict,
+                "fit_recommendation": fit_result.recommendation,
+                "includes_validation_report": report is not None,
+            },
+            artifacts={
+                "resume_markdown": resume_md,
+                "cover_letter_markdown": cover_md,
+                "fit_summary_markdown": fit_summary_path,
+                "validation_report_markdown": validation_path,
+            },
+            data={
+                "fit": asdict(fit_result),
+                "validation": asdict(report) if report else None,
+            },
+        )
+        with open(manifest_path, "w") as f:
+            json.dump(payload, f, indent=2)
+        console.print(f"[green]Package manifest written to {manifest_path}[/green]")
 
     console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
@@ -466,7 +673,10 @@ def ats(resume, job, job_url, tailored, top):
 @click.option(
     "--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job"
 )
-def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, json_output):
     """Tailor resume to multiple jobs at once.
 
     Jobs can be supplied as a directory of .txt/.md files (--jobs-dir)
@@ -483,34 +693,81 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     Each job gets its own subfolder in --outdir containing resume.md
     (and cover-letter.md if --with-cover).
     """
+    import io
+
     from rich.panel import Panel
 
-    from .batch import load_jobs_from_dir, load_jobs_from_manifest, print_summary, run_batch
+    from .batch import (
+        load_jobs_from_dir,
+        load_jobs_from_manifest,
+        print_summary,
+        run_batch,
+        serialize_results,
+        summarize_results,
+    )
 
     if not jobs_dir and not manifest:
         raise click.UsageError("Provide either --jobs-dir or --manifest")
     if jobs_dir and manifest:
         raise click.UsageError("Use --jobs-dir OR --manifest, not both")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
+    render_console = console
+    if json_output:
+        render_console = Console(file=io.StringIO(), force_terminal=False, color_system=None)
+    else:
+        console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
     with open(master) as f:
         master_text = f.read()
-    console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
+    if not json_output:
+        console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
     if jobs_dir:
         jobs = load_jobs_from_dir(jobs_dir)
-        console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
+        if not json_output:
+            console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
     else:
         jobs = load_jobs_from_manifest(manifest)
-        console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
+        if not json_output:
+            console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
 
     if not jobs:
+        if json_output:
+            payload = _dashboard_payload(
+                "batch",
+                inputs={
+                    "master": master,
+                    "jobs_dir": jobs_dir,
+                    "manifest": manifest,
+                    "outdir": outdir,
+                    "model": model,
+                    "format": fmt,
+                    "template": template,
+                    "with_cover": with_cover,
+                },
+                summary={
+                    "job_count": 0,
+                    "succeeded": 0,
+                    "failed": 0,
+                    "cover_letters_generated": 0,
+                    "pdf_artifact_count": 0,
+                    "elapsed_seconds": 0.0,
+                },
+                artifacts={
+                    "output_directory": outdir,
+                },
+                data={
+                    "results": [],
+                },
+            )
+            _print_dashboard_json(payload)
+            return
         console.print("[yellow]No jobs found -- nothing to do.[/yellow]")
         raise SystemExit(0)
 
     action = "resume + cover letter" if with_cover else "resume"
-    console.print(f"[dim]Generating {action} for each job. Output: {outdir}/[/dim]\n")
+    if not json_output:
+        console.print(f"[dim]Generating {action} for each job. Output: {outdir}/[/dim]\n")
 
     results = run_batch(
         master_text=master_text,
@@ -520,8 +777,33 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
         fmt=fmt,
         template=template,
         with_cover=with_cover,
-        console=console,
+        console=render_console,
     )
+
+    if json_output:
+        payload = _dashboard_payload(
+            "batch",
+            inputs={
+                "master": master,
+                "jobs_dir": jobs_dir,
+                "manifest": manifest,
+                "outdir": outdir,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "with_cover": with_cover,
+            },
+            summary=summarize_results(results),
+            artifacts={
+                "output_directory": outdir,
+                "job_directories": [result.name for result in results if result.success],
+            },
+            data={
+                "results": serialize_results(results),
+            },
+        )
+        _print_dashboard_json(payload)
+        return
 
     console.print("")
     print_summary(results, console, fmt=fmt, with_cover=with_cover)
@@ -627,6 +909,47 @@ def check():
             "Run [bold]resume-engine check[/bold] after fixing the issues above."
         )
         raise SystemExit(1)
+
+
+@main.command()
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Exit with a non-zero status if any required checks fail",
+)
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def doctor(strict, json_output):
+    """Diagnose local setup issues before you tailor or export."""
+    import json
+
+    from .doctor import results_to_payload, run_diagnostics, summarize_results
+
+    status_styles = {"pass": "green", "warn": "yellow", "fail": "red"}
+    status_labels = {"pass": "PASS", "warn": "WARN", "fail": "FAIL"}
+
+    results = run_diagnostics()
+
+    if json_output:
+        console.print_json(json.dumps(results_to_payload(results, strict=strict)))
+        if strict and any(result.required and result.status == "fail" for result in results):
+            raise click.ClickException("Doctor found required setup failures.")
+        return
+
+    console.print(Panel("[bold]resume-engine[/bold] - environment doctor", style="blue"))
+    for result in results:
+        label = status_labels[result.status]
+        console.print(
+            f"[{status_styles[result.status]}]{label}[/{status_styles[result.status]}] {result.name}: {result.detail}"
+        )
+
+    passed, warned, failed = summarize_results(results)
+    console.print(f"[bold]Summary:[/bold] {passed} passed, {warned} warning(s), {failed} failed")
+
+    if strict and failed:
+        raise click.ClickException("Doctor found required setup failures.")
 
 
 @main.group()
@@ -914,7 +1237,9 @@ def config_reset():
 @click.option(
     "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def score_cmd(resume, brief, json_output):
     """Score a resume's overall quality (0-100) across 5 dimensions.
 
@@ -927,7 +1252,6 @@ def score_cmd(resume, brief, json_output):
       resume-engine score tailored.md --brief
       resume-engine score master-resume.md --json
     """
-    import json
     from dataclasses import asdict
 
     from rich.table import Table
@@ -1015,8 +1339,8 @@ def score_cmd(resume, brief, json_output):
 
     console.print("")
 
-@main.command("optimize")
 
+@main.command("optimize")
 @click.argument("resume", type=click.Path(exists=True))
 @click.option("--output", default=None, help="Output file path (default: <resume>-optimized.md)")
 @click.option(
@@ -1130,8 +1454,6 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     console.print("")
 
 
-
-
 @main.command("interview")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
 @click.option(
@@ -1141,8 +1463,10 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option(
-    "--count", default=10, show_default=True,
-    help="Number of questions to generate (5-20 recommended)"
+    "--count",
+    default=10,
+    show_default=True,
+    help="Number of questions to generate (5-20 recommended)",
 )
 @click.option(
     "--model",
@@ -1150,14 +1474,32 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     type=click.Choice(["ollama", "openai", "anthropic"]),
 )
 @click.option(
-    "--with-followups", "with_followups", is_flag=True, default=False,
+    "--with-followups",
+    "with_followups",
+    is_flag=True,
+    default=False,
     help="Also generate likely follow-up/probing questions on resume specifics",
 )
 @click.option(
-    "--output", default=None,
+    "--output",
+    default=None,
     help="Save prep sheet to a markdown file",
 )
-def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def interview(
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    count,
+    model,
+    with_followups,
+    output,
+    json_output,
+):
     """Generate tailored interview questions with STAR-method answer frameworks.
 
     Analyzes the job posting and your resume to predict likely questions
@@ -1170,13 +1512,17 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
       resume-engine interview --master resume.md --job posting.txt
       resume-engine interview --master resume.md --job-url https://example.com/jobs/123 --count 15
       resume-engine interview --master resume.md --job posting.txt --with-followups --output prep.md
+      resume-engine interview --master resume.md --job posting.txt --json
     """
+    from dataclasses import asdict
+
     from .interview import generate_interview_prep
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1185,9 +1531,11 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
             job_text = f.read()
     elif job_url:
         from .scraper import scrape_job_posting
+
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
 
     result = generate_interview_prep(
         master_text,
@@ -1196,6 +1544,31 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
         count=count,
         with_followups=with_followups,
     )
+
+    if json_output:
+        payload = _dashboard_payload(
+            "interview",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "count": count,
+                "with_followups": with_followups,
+            },
+            summary={
+                "question_count": len(result.questions),
+                "followup_count": len(result.followups),
+            },
+            artifacts={
+                "markdown": output,
+            },
+            data=asdict(result),
+        )
+        _print_dashboard_json(payload)
+        return
 
     # Category colors
     CATEGORY_STYLES = {
@@ -1218,6 +1591,7 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
     if result.questions:
         # Group by category for display
         from collections import defaultdict
+
         by_cat = defaultdict(list)
         for q in result.questions:
             by_cat[q.category].append(q)
@@ -1243,7 +1617,7 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
         md_lines.append(result.raw_questions)
 
     if result.followups:
-        console.print(f"\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
+        console.print("\n[bold yellow]== Likely Follow-Up / Probing Questions ==[/bold yellow]\n")
         md_lines.append("## Likely Follow-Up Questions\n")
 
         for fq in result.followups:
@@ -1273,7 +1647,9 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
 
 @main.command("cover-score")
 @click.argument("cover_letter", type=click.Path(exists=True))
-@click.option("--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)")
+@click.option(
+    "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
+)
 def cover_score_cmd(cover_letter, brief):
     """Score a cover letter's quality (0-100) across 5 dimensions.
 
@@ -1330,7 +1706,9 @@ def cover_score_cmd(cover_letter, brief):
 
     for dim in result.dimensions:
         bar_filled = int(dim.pct / 5)
-        bar = "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        bar = (
+            "[green]" + "#" * bar_filled + "[/green]" + "[dim]" + "." * (20 - bar_filled) + "[/dim]"
+        )
         pct_style = "green" if dim.pct >= 80 else ("yellow" if dim.pct >= 50 else "red")
         table.add_row(
             dim.name,
@@ -1372,8 +1750,6 @@ def cover_score_cmd(cover_letter, brief):
     console.print("")
 
 
-
-
 @main.group()
 def track():
     """Track job applications in a local SQLite log.
@@ -1394,7 +1770,9 @@ def track():
 @track.command("add")
 @click.option("--company", required=True, help="Company name")
 @click.option("--role", required=True, help="Job title / role")
-@click.option("--date", "applied_date", default=None, help="Date applied (YYYY-MM-DD, default: today)")
+@click.option(
+    "--date", "applied_date", default=None, help="Date applied (YYYY-MM-DD, default: today)"
+)
 @click.option(
     "--status",
     default="applied",
@@ -1534,10 +1912,12 @@ def track_show(app_id):
 
     style = STATUS_STYLES.get(row["status"], "white")
     console.print("")
-    console.print(Panel(
-        f"[bold]#{row['id']}[/bold]  {row['company']}  --  {row['role']}",
-        style="blue",
-    ))
+    console.print(
+        Panel(
+            f"[bold]#{row['id']}[/bold]  {row['company']}  --  {row['role']}",
+            style="blue",
+        )
+    )
     console.print(f"  Date applied:  {row['date']}")
     console.print(f"  Status:        [{style}]{row['status']}[/{style}]")
     if row.get("url"):
@@ -1617,8 +1997,6 @@ def track_stats():
     console.print("")
 
 
-
-
 @main.command("fit")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
 @click.option(
@@ -1638,7 +2016,10 @@ def track_stats():
     default=None,
     help="Save full fit report to a markdown file",
 )
-def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output, json_output):
     """Score how well you fit a job posting (0-100) before applying.
 
     Combines ATS keyword analysis with LLM-powered evaluation of skills
@@ -1650,13 +2031,17 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
       resume-engine fit --master resume.md --job posting.txt
       resume-engine fit --master resume.md --job-url https://example.com/jobs/123
       resume-engine fit --master resume.md --job posting.txt --model openai --output report.md
+      resume-engine fit --master resume.md --job posting.txt --json
     """
+    from dataclasses import asdict
+
     from .fit import assess_fit
 
     if not job and not job_url:
         raise click.UsageError("Provide either --job or --job-url")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
@@ -1668,9 +2053,36 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
         job_text = scrape_job_posting(job_url)
 
-    console.print(f"[dim]Running fit analysis with {model}...[/dim]")
+    if not json_output:
+        console.print(f"[dim]Running fit analysis with {model}...[/dim]")
 
     result = assess_fit(master_text, job_text, model=model)
+
+    if json_output:
+        payload = _dashboard_payload(
+            "fit",
+            inputs={
+                "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
+                "job": job,
+                "job_url": job_url,
+                "model": model,
+                "brief": brief,
+            },
+            summary={
+                "total": result.total,
+                "verdict": result.verdict,
+                "recommendation": result.recommendation,
+                "ats_score": result.ats_score,
+            },
+            artifacts={
+                "markdown": output,
+            },
+            data=asdict(result),
+        )
+        _print_dashboard_json(payload)
+        return
 
     # Recommendation style
     REC_STYLES = {
@@ -1785,7 +2197,10 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
 @click.option("--cover-letter", default=None, help="Path to cover letter output")
 @click.option("--output", default=None, help="Save the validation report to markdown")
-def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
     """Validate tailored output against the source resume and job posting.
 
     Flags likely unsupported claims, title/date/company drift, and
@@ -1796,7 +2211,10 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md
       resume-engine validate --master resume.md --job posting.txt --cover-letter cover.md
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover.md
+      resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
     """
+    from dataclasses import asdict
+
     from rich.table import Table
 
     from .validate import validate_outputs
@@ -1806,7 +2224,8 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
     if not resume_output and not cover_letter:
         raise click.UsageError("Provide --resume, --cover-letter, or both")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
     with open(master) as f:
         master_text = f.read()
@@ -1836,13 +2255,47 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
         cover_letter_text=cover_text,
     )
 
+    if json_output:
+        all_issues = [issue for target in report.targets for issue in target.issues]
+        high_severity = sum(1 for issue in all_issues if issue.severity.lower() == "high")
+        payload = _dashboard_payload(
+            "validate",
+            inputs={
+                "master": master,
+                "job": job,
+                "job_url": job_url,
+                "resume": resume_output,
+                "cover_letter": cover_letter,
+            },
+            summary={
+                "target_count": len(report.targets),
+                "issue_count": len(all_issues),
+                "high_severity_issue_count": high_severity,
+                "lowest_trust_score": min(
+                    (target.score for target in report.targets), default=None
+                ),
+            },
+            artifacts={
+                "markdown": output,
+            },
+            data=asdict(report),
+        )
+        _print_dashboard_json(payload)
+        return
+
     md_lines = ["# Validation Report\n"]
     has_high = False
 
     for target in report.targets:
-        score_style = "bold green" if target.score >= 85 else ("bold yellow" if target.score >= 65 else "bold red")
+        score_style = (
+            "bold green"
+            if target.score >= 85
+            else ("bold yellow" if target.score >= 65 else "bold red")
+        )
         console.print("")
-        console.print(f"[bold]{target.label.title()}[/bold] trust score: [{score_style}]{target.score}/100[/{score_style}]")
+        console.print(
+            f"[bold]{target.label.title()}[/bold] trust score: [{score_style}]{target.score}/100[/{score_style}]"
+        )
         md_lines.append(f"## {target.label.title()}\n")
         md_lines.append(f"Trust score: {target.score}/100\n")
 
@@ -1860,7 +2313,9 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
         for issue in target.issues:
             if issue.severity == "high":
                 has_high = True
-            sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(issue.severity, "white")
+            sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(
+                issue.severity, "white"
+            )
             table.add_row(
                 f"[{sev_style}]{issue.severity}[/{sev_style}]",
                 issue.category,
@@ -1877,9 +2332,13 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output):
 
     console.print("")
     if has_high:
-        console.print("[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything.")
+        console.print(
+            "[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything."
+        )
     else:
-        console.print("[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence.")
+        console.print(
+            "[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence."
+        )
 
     if output:
         with open(output, "w") as f:
@@ -1927,7 +2386,9 @@ def init_cmd(output):
     data.name = click.prompt("  Full name", type=str)
     data.email = click.prompt("  Email", type=str, default="", show_default=False)
     data.phone = click.prompt("  Phone", type=str, default="", show_default=False)
-    data.location = click.prompt("  Location (city, state)", type=str, default="", show_default=False)
+    data.location = click.prompt(
+        "  Location (city, state)", type=str, default="", show_default=False
+    )
     data.linkedin = click.prompt("  LinkedIn URL", type=str, default="", show_default=False)
     data.website = click.prompt("  Website/portfolio URL", type=str, default="", show_default=False)
 
@@ -1938,7 +2399,9 @@ def init_cmd(output):
 
     # Skills
     console.print("\n[bold cyan]Skills[/bold cyan]")
-    console.print("  [dim]Enter skills separated by commas (e.g. Python, AWS, Project Management).[/dim]")
+    console.print(
+        "  [dim]Enter skills separated by commas (e.g. Python, AWS, Project Management).[/dim]"
+    )
     skills_raw = click.prompt("  Skills", type=str, default="", show_default=False)
     if skills_raw.strip():
         data.skills = [s.strip() for s in skills_raw.split(",") if s.strip()]
@@ -1949,7 +2412,9 @@ def init_cmd(output):
 
     while True:
         console.print("")
-        company = click.prompt("  Company name (blank to finish)", type=str, default="", show_default=False)
+        company = click.prompt(
+            "  Company name (blank to finish)", type=str, default="", show_default=False
+        )
         if not company.strip():
             break
         title = click.prompt("  Job title", type=str)
@@ -1959,13 +2424,21 @@ def init_cmd(output):
         console.print("  [dim]Add bullet points for this role. Leave blank to stop.[/dim]")
         bullets: list[str] = []
         while True:
-            bullet = click.prompt(f"    Bullet {len(bullets) + 1}", type=str, default="", show_default=False)
+            bullet = click.prompt(
+                f"    Bullet {len(bullets) + 1}", type=str, default="", show_default=False
+            )
             if not bullet.strip():
                 break
             bullets.append(bullet.strip())
 
         data.experience.append(
-            Experience(company=company.strip(), title=title.strip(), start=start.strip(), end=end.strip(), bullets=bullets)
+            Experience(
+                company=company.strip(),
+                title=title.strip(),
+                start=start.strip(),
+                end=end.strip(),
+                bullets=bullets,
+            )
         )
 
     # Education
@@ -1974,7 +2447,9 @@ def init_cmd(output):
 
     while True:
         console.print("")
-        school = click.prompt("  School name (blank to finish)", type=str, default="", show_default=False)
+        school = click.prompt(
+            "  School name (blank to finish)", type=str, default="", show_default=False
+        )
         if not school.strip():
             break
         degree = click.prompt("  Degree (e.g. B.S. Computer Science)", type=str)
@@ -1989,7 +2464,9 @@ def init_cmd(output):
     console.print("  [dim]Add certifications one at a time. Leave blank to stop.[/dim]")
 
     while True:
-        cert = click.prompt("  Certification (blank to finish)", type=str, default="", show_default=False)
+        cert = click.prompt(
+            "  Certification (blank to finish)", type=str, default="", show_default=False
+        )
         if not cert.strip():
             break
         data.certifications.append(cert.strip())

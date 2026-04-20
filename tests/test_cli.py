@@ -1,5 +1,7 @@
 """Tests for CLI entry points (no LLM calls)."""
 
+import json
+
 import pytest
 from click.testing import CliRunner
 
@@ -23,6 +25,7 @@ class TestCLIHelp:
         assert "templates" in result.output
         assert "import" in result.output
         assert "validate" in result.output
+        assert "doctor" in result.output
 
     def test_legacy_module_entrypoint_help(self):
         import subprocess
@@ -82,6 +85,11 @@ class TestCLIHelp:
         result = runner.invoke(main, ["track", "--help"])
         assert result.exit_code == 0
         assert "export" in result.output
+
+    def test_doctor_help(self, runner):
+        result = runner.invoke(main, ["doctor", "--help"])
+        assert result.exit_code == 0
+        assert "--strict" in result.output
 
     def test_track_export_help(self, runner):
         result = runner.invoke(main, ["track", "export", "--help"])
@@ -195,7 +203,10 @@ class TestTrackExportCommand:
         monkeypatch.setenv("XDG_DATA_HOME", str(db_dir))
 
         runner.invoke(main, ["track", "add", "--company", "Acme", "--role", "Engineer"])
-        runner.invoke(main, ["track", "add", "--company", "Beta", "--role", "Analyst", "--status", "interview"])
+        runner.invoke(
+            main,
+            ["track", "add", "--company", "Beta", "--role", "Analyst", "--status", "interview"],
+        )
 
         output_file = tmp_path / "applications.csv"
         export_result = runner.invoke(
@@ -220,6 +231,99 @@ class TestTrackExportCommand:
 
 
 class TestPackageCommand:
+    def test_package_generates_fit_summary_and_json_manifest(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+            ),
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Acme Corp,\n\nI build Python APIs.\n"
+            ),
+        )
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[
+                FitDimension(
+                    name="ATS Keyword Match",
+                    score=18,
+                    max_score=20,
+                    notes=["Matched 9/10 keywords"],
+                )
+            ],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=["Strong Python API experience"],
+            gaps=["Could quantify impact more clearly"],
+            raw_analysis="Strong overlap with the role.",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        fit_summary_path = outdir / "fit-summary.md"
+        assert fit_summary_path.exists()
+        fit_text = fit_summary_path.read_text()
+        assert "# Fit Summary" in fit_text
+        assert "Score: 88/100" in fit_text
+        assert "Strong Python API experience" in fit_text
+
+        manifest_path = outdir / "package-summary.json"
+        assert manifest_path.exists()
+        payload = json.loads(manifest_path.read_text())
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "package"
+        assert payload["artifacts"]["fit_summary_markdown"].endswith("fit-summary.md")
+        assert payload["data"]["fit"]["total"] == 88
+        assert payload["data"]["validation"] is None
+
     def test_package_generates_validation_report(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
@@ -229,11 +333,15 @@ class TestPackageCommand:
 
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+            ),
         )
         monkeypatch.setattr(
             "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear Acme Corp,\n\nI build Python APIs.\n",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Acme Corp,\n\nI build Python APIs.\n"
+            ),
         )
 
         result = runner.invoke(
@@ -291,3 +399,339 @@ class TestPackageCommand:
 
         assert result.exit_code == 0
         assert not (outdir / "validation-report.md").exists()
+
+
+class TestFitCommand:
+    def test_fit_json_output(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython, AWS, Kubernetes\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need Python, AWS, Kubernetes.")
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fake_fit = types.ModuleType("resume_engine.fit")
+        fake_fit.assess_fit = lambda master_text, job_text, model="ollama": FitResult(
+            total=82,
+            dimensions=[
+                FitDimension(
+                    name="ATS Keyword Match", score=16, max_score=20, notes=["Matched 3/3 keywords"]
+                ),
+                FitDimension(name="Required Skills Coverage", score=21, max_score=25),
+                FitDimension(name="Seniority / Level Match", score=17, max_score=20),
+                FitDimension(name="Industry / Domain Fit", score=12, max_score=15),
+                FitDimension(name="Overall Assessment", score=16, max_score=20),
+            ],
+            verdict="Strong fit for the role",
+            recommendation="Apply",
+            strengths=["Strong Python match"],
+            gaps=["No explicit fintech background"],
+            raw_analysis="Structured analysis",
+            ats_score=80,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fake_fit)
+
+        result = runner.invoke(
+            main,
+            ["fit", "--master", str(master_file), "--job", str(job_file), "--json"],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "fit"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["inputs"]["job"] == str(job_file)
+        assert payload["inputs"]["job_url"] is None
+        assert payload["inputs"]["model"] == "ollama"
+        assert payload["summary"]["total"] == 82
+        assert payload["summary"]["recommendation"] == "Apply"
+        assert len(payload["data"]["dimensions"]) == 5
+
+
+class TestCoverCommand:
+    def test_cover_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        output_file = tmp_path / "cover.md"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Team,\n\nI build Python systems.\n"
+            ),
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "cover",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--output",
+                str(output_file),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "cover"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["artifacts"]["cover_letter_markdown"] == str(output_file)
+        assert payload["data"]["cover_letter_markdown"].startswith("Dear Team")
+        assert output_file.exists()
+
+
+class TestTailorCommand:
+    def test_tailor_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        output_file = tmp_path / "tailored.md"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Python developer\n"
+            ),
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "tailor",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--output",
+                str(output_file),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "tailor"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["artifacts"]["resume_markdown"] == str(output_file)
+        assert payload["data"]["resume_markdown"].startswith("# Tailored Resume")
+        assert output_file.exists()
+
+
+class TestBatchCommand:
+    def test_batch_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+        (jobs_dir / "acme.txt").write_text("Need a Python developer.")
+        outdir = tmp_path / "applications"
+
+        from resume_engine.batch import BatchResult, JobSpec
+
+        monkeypatch.setattr(
+            "resume_engine.batch.load_jobs_from_dir",
+            lambda path: [JobSpec(name="acme", job_file=str(jobs_dir / "acme.txt"))],
+        )
+        monkeypatch.setattr(
+            "resume_engine.batch.run_batch",
+            lambda **kwargs: [
+                BatchResult(
+                    name="acme",
+                    success=True,
+                    resume_path=str(outdir / "acme" / "resume.md"),
+                    cover_path=str(outdir / "acme" / "cover-letter.md"),
+                    pdf_paths=[str(outdir / "acme" / "resume.pdf")],
+                    elapsed=1.25,
+                )
+            ],
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--jobs-dir",
+                str(jobs_dir),
+                "--outdir",
+                str(outdir),
+                "--with-cover",
+                "--format",
+                "pdf",
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "batch"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["inputs"]["jobs_dir"] == str(jobs_dir)
+        assert payload["summary"]["job_count"] == 1
+        assert payload["summary"]["succeeded"] == 1
+        assert payload["summary"]["cover_letters_generated"] == 1
+        assert payload["summary"]["pdf_artifact_count"] == 1
+        assert payload["artifacts"]["output_directory"] == str(outdir)
+        assert payload["artifacts"]["job_directories"] == ["acme"]
+        assert payload["data"]["results"][0]["resume_path"].endswith("resume.md")
+
+
+class TestInterviewCommand:
+    def test_interview_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+
+        @dataclass
+        class InterviewQuestion:
+            number: int
+            category: str
+            question: str
+            framework: str = ""
+
+        @dataclass
+        class FollowupQuestion:
+            number: int
+            question: str
+            probing: str = ""
+
+        @dataclass
+        class InterviewPrep:
+            questions: list[InterviewQuestion] = field(default_factory=list)
+            followups: list[FollowupQuestion] = field(default_factory=list)
+            raw_questions: str = ""
+            raw_followups: str = ""
+
+        fake_interview = types.ModuleType("resume_engine.interview")
+        fake_interview.generate_interview_prep = lambda *args, **kwargs: InterviewPrep(
+            questions=[
+                InterviewQuestion(
+                    number=1, category="Behavioral", question="Tell me about a project."
+                )
+            ],
+            followups=[
+                FollowupQuestion(number=1, question="What was the impact?", probing="Metrics")
+            ],
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.interview", fake_interview)
+
+        result = runner.invoke(
+            main,
+            ["interview", "--master", str(master_file), "--job", str(job_file), "--json"],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "interview"
+        assert payload["summary"]["question_count"] == 1
+        assert payload["summary"]["followup_count"] == 1
+        assert payload["data"]["questions"][0]["question"] == "Tell me about a project."
+
+
+class TestValidateCommand:
+    def test_validate_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        resume_file = tmp_path / "tailored.md"
+        resume_file.write_text("# Tailored Resume\n")
+
+        @dataclass
+        class ValidationIssue:
+            severity: str
+            category: str
+            message: str
+            evidence: str = None
+            suggestion: str = None
+
+        @dataclass
+        class ValidationTarget:
+            label: str
+            score: int
+            issues: list[ValidationIssue] = field(default_factory=list)
+
+        @dataclass
+        class ValidationReport:
+            targets: list[ValidationTarget] = field(default_factory=list)
+
+        fake_validate = types.ModuleType("resume_engine.validate")
+        fake_validate.validate_outputs = lambda **kwargs: ValidationReport(
+            targets=[
+                ValidationTarget(
+                    label="resume",
+                    score=72,
+                    issues=[
+                        ValidationIssue(
+                            severity="high", category="claim", message="Metric not grounded"
+                        )
+                    ],
+                )
+            ]
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.validate", fake_validate)
+
+        result = runner.invoke(
+            main,
+            [
+                "validate",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--resume",
+                str(resume_file),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "validate"
+        assert payload["summary"]["issue_count"] == 1
+        assert payload["summary"]["high_severity_issue_count"] == 1
+        assert payload["summary"]["lowest_trust_score"] == 72
+        assert payload["data"]["targets"][0]["label"] == "resume"

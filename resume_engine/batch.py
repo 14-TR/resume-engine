@@ -189,6 +189,36 @@ def run_batch(
     return results
 
 
+def summarize_results(results: list[BatchResult]) -> dict:
+    """Build a machine-readable summary for batch runs."""
+    succeeded = sum(1 for result in results if result.success)
+    failed = len(results) - succeeded
+    return {
+        "job_count": len(results),
+        "succeeded": succeeded,
+        "failed": failed,
+        "cover_letters_generated": sum(1 for result in results if result.cover_path),
+        "pdf_artifact_count": sum(len(result.pdf_paths) for result in results),
+        "elapsed_seconds": round(sum(result.elapsed for result in results), 3),
+    }
+
+
+def serialize_results(results: list[BatchResult]) -> list[dict]:
+    """Convert batch results into JSON-friendly dictionaries."""
+    return [
+        {
+            "name": result.name,
+            "success": result.success,
+            "resume_path": result.resume_path or None,
+            "cover_path": result.cover_path or None,
+            "pdf_paths": result.pdf_paths,
+            "error": result.error or None,
+            "elapsed_seconds": round(result.elapsed, 3),
+        }
+        for result in results
+    ]
+
+
 def print_summary(
     results: list[BatchResult], console: Console, fmt: str = "md", with_cover: bool = False
 ) -> None:
