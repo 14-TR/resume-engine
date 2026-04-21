@@ -128,11 +128,12 @@ resume-engine interview --master resume.md --job posting.txt --with-followups --
 
 ### ats
 
-Analyze ATS keyword match between your resume and a job posting. Shows which keywords you hit and which you miss.
+Analyze ATS keyword match between your resume and a job posting. Shows which keywords you hit and which you miss. Add `--json` for automation-friendly output or pipeline checks.
 
 ```bash
 resume-engine ats --resume resume.md --job posting.txt
 resume-engine ats --resume resume.md --job-url "https://example.com/jobs/123" --top 20
+resume-engine ats --resume resume.md --job posting.txt --json
 
 # Before/after comparison with a tailored version
 resume-engine ats --resume master.md --job posting.txt --tailored tailored.md
@@ -194,6 +195,7 @@ Resume Engine can emit machine-readable JSON for scoring and review steps:
 
 - `resume-engine score --json`
 - `resume-engine cover-score --json`
+- `resume-engine ats --json`
 - `resume-engine fit --json`
 - `resume-engine interview --json`
 - `resume-engine validate --json`
