@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from unittest.mock import patch
 
 from resume_engine.optimizer import explain_changes, optimize_resume
@@ -190,3 +192,36 @@ class TestOptimizerCLI:
 
         assert result.exit_code == 0, result.output
         assert "Changes made" in result.output or explanation in result.output
+
+    def test_optimize_json_output_uses_dashboard_schema(self, tmp_path):
+        """--json should emit the shared dashboard schema for automation."""
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        resume_file = tmp_path / "resume.md"
+        resume_file.write_text(SAMPLE_RESUME)
+        improved = "# Jane Smith\n\n## Experience\n- Maintained and scaled backend systems.\n"
+        explanation = "- Replaced passive phrasing with action verbs"
+
+        with patch("resume_engine.optimizer.optimize_resume", return_value=improved):
+            with patch("resume_engine.optimizer.explain_changes", return_value=explanation):
+                runner = CliRunner()
+                result = runner.invoke(
+                    main,
+                    ["optimize", str(resume_file), "--json", "--diff", "--explain", "--model", "openai"],
+                )
+
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "optimize"
+        assert payload["inputs"]["resume"] == str(resume_file)
+        assert payload["inputs"]["diff"] is True
+        assert payload["inputs"]["explain"] is True
+        assert payload["artifacts"]["optimized_resume"].endswith("resume-optimized.md")
+        assert payload["summary"]["explanation_included"] is True
+        assert payload["summary"]["diff_included"] is True
+        assert payload["data"]["explanation"] == explanation
+        assert payload["data"]["diff"]["changed_section_count"] >= 0
+
