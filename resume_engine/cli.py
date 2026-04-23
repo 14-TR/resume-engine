@@ -904,7 +904,10 @@ def templates_show(name):
     default=True,
     help="Show section-by-section summary (default)",
 )
-def diff_cmd(original, tailored, show_unified, show_sections):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def diff_cmd(original, tailored, show_unified, show_sections, json_output):
     """Show a diff between original and tailored resume.
 
     Highlights what changed section by section so you can see what the AI
@@ -925,6 +928,45 @@ def diff_cmd(original, tailored, show_unified, show_sections):
         tail_text = f.read()
 
     result = compute_diff(orig_text, tail_text)
+
+    changed_sections = [s for s in result.sections if s.is_changed]
+    unchanged_sections = [s for s in result.sections if not s.is_changed]
+
+    if json_output:
+        payload = _dashboard_payload(
+            "diff",
+            inputs={
+                "original": original,
+                "tailored": tailored,
+                "show_sections": show_sections,
+                "show_unified": show_unified,
+            },
+            summary={
+                "change_score": result.change_score,
+                "changed_section_count": len(changed_sections),
+                "unchanged_section_count": len(unchanged_sections),
+                "added_lines": result.added_lines,
+                "removed_lines": result.removed_lines,
+            },
+            artifacts={},
+            data={
+                "sections": [
+                    {
+                        "name": section.name,
+                        "is_changed": section.is_changed,
+                        "change_pct": section.change_pct,
+                        "added_lines": section.added,
+                        "removed_lines": section.removed,
+                        "added_line_count": len(section.added),
+                        "removed_line_count": len(section.removed),
+                    }
+                    for section in result.sections
+                ],
+                "unified_diff": result.unified_diff if show_unified else None,
+            },
+        )
+        _print_dashboard_json(payload)
+        return
 
     console.print("")
     console.print(
@@ -949,9 +991,6 @@ def diff_cmd(original, tailored, show_unified, show_sections):
     )
 
     # Section table
-    changed_sections = [s for s in result.sections if s.is_changed]
-    unchanged_sections = [s for s in result.sections if not s.is_changed]
-
     if changed_sections:
         console.print("")
         table = Table(

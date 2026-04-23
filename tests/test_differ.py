@@ -180,6 +180,7 @@ class TestCLIDiff:
         assert result.exit_code == 0
         assert "ORIGINAL" in result.output
         assert "TAILORED" in result.output
+        assert "--json" in result.output
 
     def test_diff_command_runs_on_files(self, tmp_path):
         from click.testing import CliRunner
@@ -225,6 +226,56 @@ class TestCLIDiff:
         result = runner.invoke(main, ["diff", str(orig), str(tail), "--unified"])
         assert result.exit_code == 0
         assert "Unified diff" in result.output
+
+    def test_diff_json_output_uses_dashboard_schema(self, tmp_path):
+        import json
+
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        orig = tmp_path / "original.md"
+        tail = tmp_path / "tailored.md"
+        orig.write_text(MASTER)
+        tail.write_text(TAILORED)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["diff", str(orig), str(tail), "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "diff"
+        assert payload["inputs"]["original"] == str(orig)
+        assert payload["inputs"]["tailored"] == str(tail)
+        assert payload["summary"]["changed_section_count"] == 3
+        assert payload["summary"]["unchanged_section_count"] >= 1
+        assert payload["summary"]["added_lines"] > 0
+        assert payload["summary"]["removed_lines"] > 0
+        assert payload["data"]["unified_diff"] is None
+        changed = {section["name"]: section for section in payload["data"]["sections"]}
+        assert changed["Summary"]["is_changed"] is True
+        assert changed["Education"]["is_changed"] is False
+
+    def test_diff_json_output_includes_unified_diff_when_requested(self, tmp_path):
+        import json
+
+        from click.testing import CliRunner
+
+        from resume_engine.cli import main
+
+        orig = tmp_path / "original.md"
+        tail = tmp_path / "tailored.md"
+        orig.write_text(MASTER)
+        tail.write_text(TAILORED)
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["diff", str(orig), str(tail), "--json", "--unified"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["inputs"]["show_unified"] is True
+        assert payload["data"]["unified_diff"][0].startswith("---")
 
     def test_diff_missing_file_fails(self, tmp_path):
         from click.testing import CliRunner
