@@ -170,11 +170,12 @@ resume-engine ats --resume master.md --job posting.txt --tailored tailored.md
 
 ### diff
 
-Section-aware comparison between your original and tailored resume. See exactly what the AI changed.
+Section-aware comparison between your original and tailored resume. See exactly what the AI changed. Use `--json` when you want the shared `resume-engine.dashboard/v1` schema for dashboards or automation.
 
 ```bash
 resume-engine diff master-resume.md tailored-resume.md
 resume-engine diff master-resume.md tailored-resume.md --unified
+resume-engine diff master-resume.md tailored-resume.md --json
 ```
 
 ### track
