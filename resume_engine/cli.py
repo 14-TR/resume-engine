@@ -1289,18 +1289,20 @@ def score_cmd(resume, brief, json_output):
 @click.option(
     "--diff", "show_diff", is_flag=True, default=False, help="Show section diff after optimizing"
 )
-def optimize(resume, output, model, fmt, show_explain, show_diff):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
     """Improve a resume without targeting a specific job.
 
     Uses the LLM to strengthen bullet points, remove filler language, flag
     missing metrics, and tighten phrasing -- without changing any facts.
 
-    \b
+    
     Examples:
       resume-engine optimize master-resume.md
       resume-engine optimize master-resume.md --output stronger.md --model openai
       resume-engine optimize master-resume.md --explain
       resume-engine optimize master-resume.md --diff
+      resume-engine optimize master-resume.md --json
     """
     import os
 
@@ -1309,12 +1311,12 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
     with open(resume) as f:
         original_text = f.read()
 
-    console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
-    console.print(f"[dim]Input: {len(original_text)} chars -- optimizing with {model}...[/dim]")
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
+        console.print(f"[dim]Input: {len(original_text)} chars -- optimizing with {model}...[/dim]")
 
     improved_text = optimize_resume(original_text, model=model)
 
-    # Determine output path
     if output is None:
         base, _ = os.path.splitext(resume)
         md_output = f"{base}-optimized.md"
@@ -1323,65 +1325,116 @@ def optimize(resume, output, model, fmt, show_explain, show_diff):
 
     with open(md_output, "w") as f:
         f.write(improved_text)
-    console.print(f"[green]Optimized resume written to {md_output}[/green]")
+    if not json_output:
+        console.print(f"[green]Optimized resume written to {md_output}[/green]")
 
-    # Show explanation of changes
+    explanation = None
     if show_explain:
-        console.print("\n[bold cyan]Changes made:[/bold cyan]")
-        console.print("[dim]Asking LLM to explain changes...[/dim]")
+        if not json_output:
+            console.print("\n[bold cyan]Changes made:[/bold cyan]")
+            console.print("[dim]Asking LLM to explain changes...[/dim]")
         explanation = explain_changes(original_text, improved_text, model=model)
-        console.print(explanation)
-        console.print("")
+        if not json_output:
+            console.print(explanation)
+            console.print("")
 
-    # Show diff
+    diff_summary = None
     if show_diff:
-        from rich.table import Table
-
         from .differ import compute_diff
 
         result = compute_diff(original_text, improved_text)
         changed = [s for s in result.sections if s.is_changed]
+        diff_summary = {
+            "changed_sections": [
+                {
+                    "name": sec.name,
+                    "change_pct": sec.change_pct,
+                    "added_count": len(sec.added),
+                    "removed_count": len(sec.removed),
+                }
+                for sec in changed
+            ],
+            "changed_section_count": len(changed),
+        }
 
-        if changed:
-            table = Table(show_header=True, header_style="bold cyan")
-            table.add_column("Section", style="bold", width=24)
-            table.add_column("Change", width=8)
-            table.add_column("+Added", style="green", width=8)
-            table.add_column("-Removed", style="red", width=10)
+        if not json_output:
+            from rich.table import Table
 
-            for sec in changed:
-                pct_str = f"{sec.change_pct}%"
-                if sec.change_pct >= 60:
-                    pct_style = "bold green"
-                elif sec.change_pct >= 25:
-                    pct_style = "yellow"
-                else:
-                    pct_style = "cyan"
-                table.add_row(
-                    sec.name,
-                    f"[{pct_style}]{pct_str}[/{pct_style}]",
-                    str(len(sec.added)),
-                    str(len(sec.removed)),
-                )
+            if changed:
+                table = Table(show_header=True, header_style="bold cyan")
+                table.add_column("Section", style="bold", width=24)
+                table.add_column("Change", width=8)
+                table.add_column("+Added", style="green", width=8)
+                table.add_column("-Removed", style="red", width=10)
 
-            console.print("")
-            console.print(table)
-        else:
-            console.print("[dim]No section-level changes detected.[/dim]")
+                for sec in changed:
+                    pct_str = f"{sec.change_pct}%"
+                    if sec.change_pct >= 60:
+                        pct_style = "bold green"
+                    elif sec.change_pct >= 25:
+                        pct_style = "yellow"
+                    else:
+                        pct_style = "cyan"
+                    table.add_row(
+                        sec.name,
+                        f"[{pct_style}]{pct_str}[/{pct_style}]",
+                        str(len(sec.added)),
+                        str(len(sec.removed)),
+                    )
 
+                console.print("")
+                console.print(table)
+            else:
+                console.print("[dim]No section-level changes detected.[/dim]")
+
+    pdf_output = None
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
         pdf_output = md_path_to_pdf_path(md_output)
         try:
-            console.print("[dim]Converting to PDF via pandoc...[/dim]")
+            if not json_output:
+                console.print("[dim]Converting to PDF via pandoc...[/dim]")
             markdown_to_pdf(md_output, pdf_output)
-            console.print(f"[green]PDF written to {pdf_output}[/green]")
+            if not json_output:
+                console.print(f"[green]PDF written to {pdf_output}[/green]")
         except RuntimeError as e:
-            console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+            if not json_output:
+                console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
+            pdf_output = None
+
+    if json_output:
+        payload = _dashboard_payload(
+            "optimize",
+            inputs={
+                "resume": resume,
+                "output": output,
+                "model": model,
+                "format": fmt,
+                "explain": show_explain,
+                "diff": show_diff,
+            },
+            summary={
+                "original_chars": len(original_text),
+                "optimized_chars": len(improved_text),
+                "char_delta": len(improved_text) - len(original_text),
+                "explanation_included": show_explain,
+                "diff_included": show_diff,
+                "pdf_generated": pdf_output is not None,
+            },
+            artifacts={
+                "optimized_resume": md_output,
+                "pdf": pdf_output,
+            },
+            data={
+                "explanation": explanation,
+                "diff": diff_summary,
+            },
+        )
+        _print_dashboard_json(payload)
+        return
 
     console.print("")
-
 
 @main.command("interview")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
