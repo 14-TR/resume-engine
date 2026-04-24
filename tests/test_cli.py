@@ -657,3 +657,31 @@ class TestValidateCommand:
         assert payload["summary"]["high_severity_issue_count"] == 1
         assert payload["summary"]["lowest_trust_score"] == 72
         assert payload["data"]["targets"][0]["label"] == "resume"
+
+
+class TestCoverScoreCommand:
+    def test_cover_score_json_output_uses_dashboard_schema(self, runner, tmp_path):
+        cover_file = tmp_path / "cover.md"
+        cover_file.write_text(
+            """Dear Hiring Team,
+
+I am excited to apply for the Senior GIS Analyst role at Acme Maps.
+I led a migration that reduced processing time by 35 percent and improved map QA turnaround.
+
+Sincerely,
+Jane Doe
+"""
+        )
+
+        result = runner.invoke(main, ["cover-score", str(cover_file), "--json"])
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "cover-score"
+        assert payload["inputs"]["cover_letter"] == str(cover_file)
+        assert payload["summary"]["dimension_count"] == 5
+        assert payload["summary"]["total_score"] == payload["data"]["total"]
+        assert payload["artifacts"]["cover_letter"] == str(cover_file)
+        assert payload["data"]["grade"]["letter"] in {"A", "B", "C", "D"}
+        assert len(payload["data"]["dimensions"]) == 5
