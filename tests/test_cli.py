@@ -145,6 +145,52 @@ class TestATSCommand:
         assert result.exit_code == 0
         assert "%" in result.output
 
+    def test_ats_json_output(self, runner, tmp_path):
+        resume_file = tmp_path / "resume.md"
+        resume_file.write_text("# Jane Doe\n## Skills\nPython, Django, PostgreSQL")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Python developer with Django and PostgreSQL experience.")
+
+        result = runner.invoke(
+            main, ["ats", "--resume", str(resume_file), "--job", str(job_file), "--json"]
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["score"] >= 0
+        assert payload["matched_count"] <= payload["total_keywords"]
+        assert "python" in payload["matched"]
+
+    def test_ats_json_output_includes_tailored_comparison(self, runner, tmp_path):
+        original = tmp_path / "original.md"
+        original.write_text("# Jane\nJava developer")
+        tailored = tmp_path / "tailored.md"
+        tailored.write_text("# Jane\nPython developer with Django and SQL skills.")
+        job = tmp_path / "job.txt"
+        job.write_text(
+            "Python Django SQL developer needed. Python required. Django preferred. SQL database."
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "ats",
+                "--resume",
+                str(original),
+                "--job",
+                str(job),
+                "--tailored",
+                str(tailored),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["tailored"]["score"] >= payload["score"]
+        assert payload["tailored"]["delta"] == payload["tailored"]["score"] - payload["score"]
+        assert "python" in payload["tailored"]["newly_matched"]
+
 
 class TestTemplatesCommand:
     def test_templates_list_runs(self, runner):
