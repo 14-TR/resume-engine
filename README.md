@@ -296,7 +296,14 @@ resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./application
 
 # From a JSON manifest
 resume-engine batch --master resume.md --manifest batch-manifest.json --outdir ./applications/
+
+# Machine-readable dashboard JSON for automation
+resume-engine batch --master resume.md --jobs-dir ./jobs/ --outdir ./applications/ --json
 ```
+
+`--json` writes only the shared `resume-engine.dashboard/v1` envelope to stdout, with
+batch inputs, success/failure counts, output directory, and per-job results under
+`data.results`.
 
 Output structure:
 
