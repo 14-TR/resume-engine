@@ -1,11 +1,17 @@
 """Tests for CLI entry points (no LLM calls)."""
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
+from resume_engine.batch import BatchResult
 from resume_engine.cli import main
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
@@ -28,12 +34,9 @@ class TestCLIHelp:
         assert "doctor" in result.output
 
     def test_legacy_module_entrypoint_help(self):
-        import subprocess
-        import sys
-
         result = subprocess.run(
             [sys.executable, "-m", "src.cli", "--help"],
-            cwd="/Users/tr-mini/Desktop/resume-engine",
+            cwd=REPO_ROOT,
             capture_output=True,
             text=True,
         )
@@ -76,6 +79,7 @@ class TestCLIHelp:
         assert result.exit_code == 0
         assert "--master" in result.output
         assert "--jobs-dir" in result.output
+        assert "--json" in result.output
 
     def test_templates_list_help(self, runner):
         result = runner.invoke(main, ["templates", "list", "--help"])
@@ -190,6 +194,135 @@ class TestATSCommand:
         assert payload["tailored"]["score"] >= payload["score"]
         assert payload["tailored"]["delta"] == payload["tailored"]["score"] - payload["score"]
         assert "python" in payload["tailored"]["newly_matched"]
+
+
+class TestBatchCommand:
+    def test_batch_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+        (jobs_dir / "acme.txt").write_text("Need a Python developer.")
+        outdir = tmp_path / "batch-output"
+
+        def fake_run_batch(**kwargs):
+            assert kwargs["console"] is not None
+            kwargs["console"].print("this must not reach stdout")
+            return [
+                BatchResult(
+                    name="acme",
+                    success=True,
+                    resume_path=str(outdir / "acme" / "resume.md"),
+                    cover_path=str(outdir / "acme" / "cover-letter.md"),
+                    pdf_paths=[str(outdir / "acme" / "resume.pdf")],
+                    elapsed=1.25,
+                )
+            ]
+
+        monkeypatch.setattr("resume_engine.batch.run_batch", fake_run_batch)
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--jobs-dir",
+                str(jobs_dir),
+                "--outdir",
+                str(outdir),
+                "--format",
+                "pdf",
+                "--with-cover",
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "batch"
+        assert payload["inputs"]["master"] == str(master_file)
+        assert payload["inputs"]["jobs_dir"] == str(jobs_dir)
+        assert payload["inputs"]["manifest"] is None
+        assert payload["summary"] == {"job_count": 1, "succeeded": 1, "failed": 0}
+        assert payload["artifacts"]["output_directory"] == str(outdir)
+        assert payload["data"]["results"][0]["name"] == "acme"
+        assert payload["data"]["results"][0]["success"] is True
+        assert payload["data"]["results"][0]["resume_markdown"].endswith("resume.md")
+        assert payload["data"]["results"][0]["cover_letter_markdown"].endswith("cover-letter.md")
+        assert payload["data"]["results"][0]["pdfs"][0].endswith("resume.pdf")
+        assert "this must not reach stdout" not in result.output
+
+    def test_batch_json_empty_jobs_returns_empty_dashboard_payload(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n")
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+
+        def fail_run_batch(**kwargs):
+            raise AssertionError("run_batch should not be called for empty JSON batch input")
+
+        monkeypatch.setattr("resume_engine.batch.run_batch", fail_run_batch)
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--jobs-dir",
+                str(jobs_dir),
+                "--outdir",
+                str(tmp_path / "out"),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "batch"
+        assert payload["summary"] == {"job_count": 0, "succeeded": 0, "failed": 0}
+        assert payload["data"]["results"] == []
+
+    def test_batch_non_json_still_prints_human_summary(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n")
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+        (jobs_dir / "acme.txt").write_text("Need a Python developer.")
+        outdir = tmp_path / "out"
+
+        monkeypatch.setattr(
+            "resume_engine.batch.run_batch",
+            lambda **kwargs: [
+                BatchResult(
+                    name="acme",
+                    success=True,
+                    resume_path=str(outdir / "acme" / "resume.md"),
+                    elapsed=0.5,
+                )
+            ],
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--jobs-dir",
+                str(jobs_dir),
+                "--outdir",
+                str(outdir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "batch mode" in result.output
+        assert "Batch Results" in result.output
+        assert "Output directory" in result.output
 
 
 class TestTemplatesCommand:

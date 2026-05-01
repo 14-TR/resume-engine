@@ -402,13 +402,15 @@ class TestInterviewCLI:
 
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
-        assert payload["master"] == str(resume_file)
-        assert payload["job"] == str(job_file)
-        assert payload["job_url"] is None
-        assert payload["model"] == "anthropic"
-        assert payload["count"] == 4
-        assert payload["with_followups"] is True
-        assert len(payload["questions"]) == 4
-        assert len(payload["followups"]) == 2
-        assert payload["questions"][0]["category"] == "Behavioral"
-        assert "Probing:" in payload["raw_followups"]
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["command"] == "interview"
+        assert payload["inputs"]["master"] == str(resume_file)
+        assert payload["inputs"]["job"] == str(job_file)
+        assert payload["inputs"]["job_url"] is None
+        assert payload["inputs"]["model"] == "anthropic"
+        assert payload["inputs"]["count"] == 4
+        assert payload["inputs"]["with_followups"] is True
+        assert len(payload["data"]["questions"]) == 4
+        assert len(payload["data"]["followups"]) == 2
+        assert payload["data"]["questions"][0]["category"] == "Behavioral"
+        assert "Probing:" in payload["data"]["raw_followups"]

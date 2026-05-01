@@ -661,7 +661,8 @@ def ats(resume, job, job_url, tailored, top, json_output):
 @click.option(
     "--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job"
 )
-def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, json_output):
     """Tailor resume to multiple jobs at once.
 
     Jobs can be supplied as a directory of .txt/.md files (--jobs-dir)
@@ -687,36 +688,90 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover):
     if jobs_dir and manifest:
         raise click.UsageError("Use --jobs-dir OR --manifest, not both")
 
-    console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
+    if not json_output:
+        console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
     with open(master) as f:
         master_text = f.read()
-    console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
+    if not json_output:
+        console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
     if jobs_dir:
         jobs = load_jobs_from_dir(jobs_dir)
-        console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
+        if not json_output:
+            console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
     else:
         jobs = load_jobs_from_manifest(manifest)
-        console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
+        if not json_output:
+            console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
 
-    if not jobs:
+    results = []
+    if jobs:
+        action = "resume + cover letter" if with_cover else "resume"
+        if not json_output:
+            console.print(f"[dim]Generating {action} for each job. Output: {outdir}/[/dim]\n")
+
+        batch_console = console
+        if json_output:
+            import io
+
+            batch_console = Console(file=io.StringIO())
+
+        results = run_batch(
+            master_text=master_text,
+            jobs=jobs,
+            outdir=outdir,
+            model=model,
+            fmt=fmt,
+            template=template,
+            with_cover=with_cover,
+            console=batch_console,
+        )
+    elif not json_output:
         console.print("[yellow]No jobs found -- nothing to do.[/yellow]")
         raise SystemExit(0)
 
-    action = "resume + cover letter" if with_cover else "resume"
-    console.print(f"[dim]Generating {action} for each job. Output: {outdir}/[/dim]\n")
+    succeeded = sum(1 for result in results if result.success)
+    failed = len(results) - succeeded
 
-    results = run_batch(
-        master_text=master_text,
-        jobs=jobs,
-        outdir=outdir,
-        model=model,
-        fmt=fmt,
-        template=template,
-        with_cover=with_cover,
-        console=console,
-    )
+    if json_output:
+        payload = _dashboard_payload(
+            "batch",
+            inputs={
+                "master": master,
+                "jobs_dir": jobs_dir,
+                "manifest": manifest,
+                "outdir": outdir,
+                "model": model,
+                "format": fmt,
+                "template": template,
+                "with_cover": with_cover,
+            },
+            summary={
+                "job_count": len(jobs),
+                "succeeded": succeeded,
+                "failed": failed,
+            },
+            artifacts={
+                "output_directory": outdir,
+            },
+            data={
+                "results": [
+                    {
+                        "name": result.name,
+                        "success": result.success,
+                        "resume_markdown": result.resume_path or None,
+                        "cover_letter_markdown": result.cover_path or None,
+                        "pdfs": result.pdf_paths,
+                        "error": result.error or None,
+                        "elapsed_seconds": result.elapsed,
+                    }
+                    for result in results
+                ]
+            },
+        )
+        _print_dashboard_json(payload)
+        return
 
     console.print("")
     print_summary(results, console, fmt=fmt, with_cover=with_cover)
@@ -1233,6 +1288,8 @@ def score_cmd(resume, brief, json_output):
         grade_label = "Significant gaps"
 
     if json_output:
+        import json
+
         payload = asdict(result)
         payload["resume"] = resume
         payload["grade"] = {"letter": grade, "label": grade_label}

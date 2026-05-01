@@ -144,9 +144,11 @@ def test_validate_cli_json_output(tmp_path):
 
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["master"] == str(master)
-    assert payload["job"] == str(job)
-    assert payload["resume"] == str(tailored)
-    assert payload["cover_letter"] is None
-    assert payload["targets"][0]["label"] == "resume"
-    assert any(issue["category"] == "company drift" for issue in payload["targets"][0]["issues"])
+    assert payload["schema"] == "resume-engine.dashboard/v1"
+    assert payload["command"] == "validate"
+    assert payload["inputs"]["master"] == str(master)
+    assert payload["inputs"]["job"] == str(job)
+    assert payload["inputs"]["resume"] == str(tailored)
+    assert payload["inputs"]["cover_letter"] is None
+    assert payload["data"]["targets"][0]["label"] == "resume"
+    assert any(issue["category"] == "company drift" for issue in payload["data"]["targets"][0]["issues"])
