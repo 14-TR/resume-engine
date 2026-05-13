@@ -88,3 +88,13 @@ git push origin v0.3.0
 ```
 
 GitHub Actions publishes to PyPI automatically via Trusted Publishing.
+
+Before a release tag:
+
+1. Confirm the next version in `pyproject.toml`
+2. Update `docs/changelog.md`
+3. Check README examples against `resume-engine --help`
+4. Run `pytest tests/` and `ruff check .`
+5. Confirm the release is approved by TR
+
+Do not publish ad hoc builds or push release tags from agent work unless the active task explicitly authorizes a package release.

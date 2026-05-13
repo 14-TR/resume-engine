@@ -4,6 +4,33 @@
 
 **Goal:** Public adoption — useful to any job seeker.
 
+## Current Release Posture
+
+The original feature roadmap is complete through item 26. Resume Engine is now in maintenance and adoption mode: keep the PyPI package, docs site, and CLI behavior stable while only adding narrow improvements that reduce user setup friction or protect output trust.
+
+## Release / Maintenance Roadmap
+
+### Package boundary
+
+- Maintain Python 3.9+ support unless a future dependency or security issue forces a documented bump.
+- Keep the public package local-first: Ollama remains the default path, while OpenAI and Anthropic stay optional provider integrations.
+- Release through signed version tags and the existing PyPI Trusted Publishing workflow only; do not publish ad hoc builds.
+- Update `docs/changelog.md`, README command examples, and reference docs before each release tag.
+
+### Maintenance priorities
+
+1. Import/source loading cleanup — unify raw text, stdin, master file, LinkedIn copy-paste, and export paths behind one documented source-loading layer.
+2. Setup reliability — keep `resume-engine doctor` useful for missing Ollama, provider keys, PDF tooling, and install-path confusion.
+3. Trust and validation — preserve grounded validation as the main safety gate before expanding generation surface area.
+4. JSON automation stability — treat the `resume-engine.dashboard/v1` envelope as a compatibility contract for dashboards, scripts, and agents.
+5. Documentation freshness — keep CLI help, README examples, docs site pages, and changelog aligned with the actual command surface.
+
+### TR-owned release gates
+
+- Choose whether the next tag is a patch release for docs/import cleanup or a minor release for new public behavior.
+- Confirm PyPI release timing after reviewing the changelog and generated package metadata.
+- Do not publish, tag, or announce a release from agent work without explicit TR approval.
+
 ## Priority Queue
 
 1. ~~Add example master resume + job posting in examples/ directory~~ (done)
