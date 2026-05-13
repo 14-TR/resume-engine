@@ -439,3 +439,5 @@ git push origin v0.3.1
 ```
 
 Requires **PyPI Trusted Publishing** configured in the `pypi` environment on the repo.
+
+Before tagging, update `docs/changelog.md`, verify the version in `pyproject.toml`, run tests/lint, and confirm release approval. Agent-created docs or maintenance PRs should stop at review unless the active task explicitly authorizes a tag or package publish.
