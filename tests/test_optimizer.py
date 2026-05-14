@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-
 from unittest.mock import patch
 
 from resume_engine.optimizer import explain_changes, optimize_resume
@@ -224,4 +223,3 @@ class TestOptimizerCLI:
         assert payload["summary"]["diff_included"] is True
         assert payload["data"]["explanation"] == explanation
         assert payload["data"]["diff"]["changed_section_count"] >= 0
-

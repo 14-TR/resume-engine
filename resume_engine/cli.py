@@ -2290,7 +2290,6 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover.md
       resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
     """
-    import json
     from dataclasses import asdict
 
     from rich.table import Table

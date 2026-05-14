@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-
 from unittest.mock import patch
 
 from resume_engine.interview import (
@@ -368,6 +367,7 @@ class TestInterviewCLI:
 
     def test_json_output(self, tmp_path):
         from click.testing import CliRunner
+
         from resume_engine.cli import main
 
         resume_file = tmp_path / "resume.md"
