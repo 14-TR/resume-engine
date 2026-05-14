@@ -5,24 +5,16 @@ All notable changes to Resume Engine are documented here.
 ## [Unreleased]
 
 ### Changed
-- Let `resume-engine validate` use the shared resume source loader, including LinkedIn URL and export sources.
-- Added `resume-engine doctor` install-path diagnostics so users can see the detected CLI executable path and package version before debugging backend setup.
-- Clarified the command reference JSON contract so raw `ats`, `doctor`, and `score` payloads are not documented as shared dashboard-envelope output.
-- Extended the quickstart with the grounded validation gate and full package handoff so first-time users see the trust review path before sending applications.
-- Aligned contributing and release-check commands with the CI Ruff lint/format scopes.
 - Clarified release documentation for maintenance/adoption work after the 0.3.1 package surface.
 - Kept release ownership explicit: agent work should prepare docs/PRs for review, not push tags or publish packages without TR approval.
-- Centralized CLI and batch text-source loading and made `--job` / `--job-url` mutually exclusive for single-job commands.
-- Included generated PDF artifact references in `package-summary.json` when `package --format pdf --json` is used.
-- Documented the Anthropic backend's actual default model and added a regression guard for cloud model docs drift.
 
 ---
 
 ## [0.3.1] - 2026-05-01
 
 ### Added
-- Shared `resume-engine.dashboard/v1` JSON envelope for `tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate`.
-- Machine-readable raw JSON output for `ats`, `doctor`, and `score`.
+- Shared `resume-engine.dashboard/v1` JSON envelope across review and automation commands.
+- Machine-readable JSON output for `tailor`, `cover`, `package`, `batch`, `ats`, `diff`, `optimize`, `doctor`, `score`, `cover-score`, `fit`, `interview`, and `validate`.
 - Expanded `package` output with an optional validation report and dashboard manifest.
 - `doctor` setup diagnostics for Python version, configured backend, Ollama, provider keys, and PDF tooling.
 - Grounded validation, fit assessment, interview prep, cover scoring, tracker export, and interactive initialization commands.
