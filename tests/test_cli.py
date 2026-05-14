@@ -254,7 +254,9 @@ class TestBatchCommand:
         assert payload["data"]["results"][0]["pdfs"][0].endswith("resume.pdf")
         assert "this must not reach stdout" not in result.output
 
-    def test_batch_json_empty_jobs_returns_empty_dashboard_payload(self, runner, tmp_path, monkeypatch):
+    def test_batch_json_empty_jobs_returns_empty_dashboard_payload(
+        self, runner, tmp_path, monkeypatch
+    ):
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\n")
         jobs_dir = tmp_path / "jobs"
@@ -504,6 +506,10 @@ class TestPackageCommand:
         assert payload["data"]["validation"] is None
 
     def test_package_generates_validation_report(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
         job_file = tmp_path / "job.txt"
@@ -522,6 +528,37 @@ class TestPackageCommand:
                 "Dear Acme Corp,\n\nI build Python APIs.\n"
             ),
         )
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=[],
+            gaps=[],
+            raw_analysis="",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
 
         result = runner.invoke(
             main,
@@ -548,6 +585,10 @@ class TestPackageCommand:
         assert "## Cover-Letter" in report_text
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\n\n- Built Python APIs.\n")
         job_file = tmp_path / "job.txt"
@@ -562,6 +603,37 @@ class TestPackageCommand:
             "resume_engine.engine.generate_cover_letter",
             lambda master_text, job_text, model, template=None: "Dear team,\n",
         )
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=[],
+            gaps=[],
+            raw_analysis="",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
 
         result = runner.invoke(
             main,
@@ -613,7 +685,9 @@ class TestFitCommand:
         fake_fit.assess_fit = lambda master_text, job_text, model="ollama": FitResult(
             total=82,
             dimensions=[
-                FitDimension(name="ATS Keyword Match", score=16, max_score=20, notes=["Matched 3/3 keywords"]),
+                FitDimension(
+                    name="ATS Keyword Match", score=16, max_score=20, notes=["Matched 3/3 keywords"]
+                ),
                 FitDimension(name="Required Skills Coverage", score=21, max_score=25),
                 FitDimension(name="Seniority / Level Match", score=17, max_score=20),
                 FitDimension(name="Industry / Domain Fit", score=12, max_score=15),
@@ -656,7 +730,9 @@ class TestCoverCommand:
 
         monkeypatch.setattr(
             "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear Team,\n\nI build Python systems.\n",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Team,\n\nI build Python systems.\n"
+            ),
         )
 
         result = runner.invoke(
@@ -682,6 +758,7 @@ class TestCoverCommand:
         assert payload["data"]["cover_letter_markdown"].startswith("Dear Team")
         assert output_file.exists()
 
+
 class TestTailorCommand:
     def test_tailor_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
@@ -692,7 +769,9 @@ class TestTailorCommand:
 
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n\n- Python developer\n",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Python developer\n"
+            ),
         )
 
         result = runner.invoke(
@@ -752,8 +831,14 @@ class TestInterviewCommand:
 
         fake_interview = types.ModuleType("resume_engine.interview")
         fake_interview.generate_interview_prep = lambda *args, **kwargs: InterviewPrep(
-            questions=[InterviewQuestion(number=1, category="Behavioral", question="Tell me about a project.")],
-            followups=[FollowupQuestion(number=1, question="What was the impact?", probing="Metrics")],
+            questions=[
+                InterviewQuestion(
+                    number=1, category="Behavioral", question="Tell me about a project."
+                )
+            ],
+            followups=[
+                FollowupQuestion(number=1, question="What was the impact?", probing="Metrics")
+            ],
         )
         monkeypatch.setitem(sys.modules, "resume_engine.interview", fake_interview)
 
@@ -808,7 +893,11 @@ class TestValidateCommand:
                 ValidationTarget(
                     label="resume",
                     score=72,
-                    issues=[ValidationIssue(severity="high", category="claim", message="Metric not grounded")],
+                    issues=[
+                        ValidationIssue(
+                            severity="high", category="claim", message="Metric not grounded"
+                        )
+                    ],
                 )
             ]
         )

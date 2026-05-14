@@ -93,6 +93,10 @@ class TestDoctorCommand:
         result = runner.invoke(main, ["doctor", "--json", "--strict"])
 
         assert result.exit_code != 0
-        payload = json.loads(result.output.splitlines()[:-1] and "\n".join(result.output.splitlines()[:-1]) or result.output)
+        payload = json.loads(
+            result.output.splitlines()[:-1]
+            and "\n".join(result.output.splitlines()[:-1])
+            or result.output
+        )
         assert payload["all_required_passed"] is False
         assert "Doctor found required setup failures." in result.output

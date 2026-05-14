@@ -208,7 +208,15 @@ class TestOptimizerCLI:
                 runner = CliRunner()
                 result = runner.invoke(
                     main,
-                    ["optimize", str(resume_file), "--json", "--diff", "--explain", "--model", "openai"],
+                    [
+                        "optimize",
+                        str(resume_file),
+                        "--json",
+                        "--diff",
+                        "--explain",
+                        "--model",
+                        "openai",
+                    ],
                 )
 
         assert result.exit_code == 0, result.output

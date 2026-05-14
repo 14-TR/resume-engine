@@ -9,7 +9,14 @@ from rich.panel import Panel
 console = Console()
 
 
-def _dashboard_payload(command: str, *, inputs: dict, summary: dict | None = None, artifacts: dict | None = None, data=None) -> dict:
+def _dashboard_payload(
+    command: str,
+    *,
+    inputs: dict,
+    summary: dict | None = None,
+    artifacts: dict | None = None,
+    data=None,
+) -> dict:
     """Build a stable machine-readable dashboard envelope for CLI review flows."""
     from datetime import datetime, timezone
 
@@ -103,9 +110,21 @@ def main():
     default=lambda: _cfg_default("template"),
     help="Resume template/style (run `templates list` to see options)",
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def tailor(
-    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template, json_output
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    output,
+    model,
+    fmt,
+    interactive,
+    template,
+    json_output,
 ):
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
@@ -234,9 +253,21 @@ def tailor(
     default=lambda: _cfg_default("template"),
     help="Cover letter template/style (run `templates list` to see options)",
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def cover(
-    master, linkedin_url, linkedin_export, job, job_url, output, model, fmt, interactive, template, json_output
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    output,
+    model,
+    fmt,
+    interactive,
+    template,
+    json_output,
 ):
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
@@ -528,7 +559,9 @@ def package(
     "--tailored", default=None, help="Path to tailored resume for before/after comparison"
 )
 @click.option("--top", default=30, show_default=True, help="Number of keywords to analyze")
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def ats(resume, job, job_url, tailored, top, json_output):
     """Analyze ATS keyword match score between resume and job posting."""
     import json
@@ -626,11 +659,15 @@ def ats(resume, job, job_url, tailored, top, json_output):
 
         if tailored_result["newly_matched"]:
             console.print("\n[bold]Newly matched by tailoring:[/bold]")
-            console.print("  " + "  ".join(f"[green]{k}[/green]" for k in tailored_result["newly_matched"]))
+            console.print(
+                "  " + "  ".join(f"[green]{k}[/green]" for k in tailored_result["newly_matched"])
+            )
 
         if tailored_result["still_missing"]:
             console.print("\n[bold]Still missing:[/bold]")
-            console.print("  " + "  ".join(f"[red]{k}[/red]" for k in tailored_result["still_missing"]))
+            console.print(
+                "  " + "  ".join(f"[red]{k}[/red]" for k in tailored_result["still_missing"])
+            )
 
     console.print("")
 
@@ -661,7 +698,9 @@ def ats(resume, job, job_url, tailored, top, json_output):
 @click.option(
     "--with-cover", is_flag=True, default=False, help="Also generate a cover letter for each job"
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, json_output):
     """Tailor resume to multiple jobs at once.
 
@@ -886,7 +925,9 @@ def check():
     default=False,
     help="Exit with a non-zero status if any required checks fail",
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def doctor(strict, json_output):
     """Diagnose local setup issues before you tailor or export."""
     import json
@@ -1367,7 +1408,9 @@ def score_cmd(resume, brief, json_output):
 @click.option(
     "--diff", "show_diff", is_flag=True, default=False, help="Show section diff after optimizing"
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
     """Improve a resume without targeting a specific job.
 
@@ -1514,6 +1557,7 @@ def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
 
     console.print("")
 
+
 @main.command("interview")
 @click.option("--master", default=None, help="Path to master resume (markdown)")
 @click.option(
@@ -1545,8 +1589,21 @@ def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
     default=None,
     help="Save prep sheet to a markdown file",
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
-def interview(master, linkedin_url, linkedin_export, job, job_url, count, model, with_followups, output, json_output):
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
+def interview(
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    count,
+    model,
+    with_followups,
+    output,
+    json_output,
+):
     """Generate tailored interview questions with STAR-method answer frameworks.
 
     Analyzes the job posting and your resume to predict likely questions
@@ -1697,7 +1754,9 @@ def interview(master, linkedin_url, linkedin_export, job, job_url, count, model,
 @click.option(
     "--brief", is_flag=True, default=False, help="Show score only (no detailed breakdown)"
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def cover_score_cmd(cover_letter, brief, json_output):
     """Score a cover letter's quality (0-100) across 5 dimensions.
 
@@ -2096,7 +2155,9 @@ def track_stats():
     default=None,
     help="Save full fit report to a markdown file",
 )
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, output, json_output):
     """Score how well you fit a job posting (0-100) before applying.
 
@@ -2268,7 +2329,6 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
         console.print("")
 
 
-
 @main.command("validate")
 @click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
@@ -2276,7 +2336,9 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
 @click.option("--cover-letter", default=None, help="Path to cover letter output")
 @click.option("--output", default=None, help="Save the validation report to markdown")
-@click.option("--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON")
+@click.option(
+    "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
+)
 def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
     """Validate tailored output against the source resume and job posting.
 
@@ -2348,7 +2410,9 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
                 "target_count": len(report.targets),
                 "issue_count": len(all_issues),
                 "high_severity_issue_count": high_severity,
-                "lowest_trust_score": min((target.score for target in report.targets), default=None),
+                "lowest_trust_score": min(
+                    (target.score for target in report.targets), default=None
+                ),
             },
             artifacts={
                 "markdown": output,
