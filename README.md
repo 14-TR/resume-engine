@@ -225,10 +225,16 @@ resume-engine doctor --json
 
 Resume Engine can emit machine-readable JSON for scoring, review, and environment checks:
 
+- `resume-engine tailor --json`
+- `resume-engine cover --json`
+- `resume-engine package --json`
+- `resume-engine batch --json`
 - `resume-engine doctor --json`
 - `resume-engine score --json`
 - `resume-engine cover-score --json`
 - `resume-engine ats --json`
+- `resume-engine diff --json`
+- `resume-engine optimize --json`
 - `resume-engine fit --json`
 - `resume-engine interview --json`
 - `resume-engine validate --json`
