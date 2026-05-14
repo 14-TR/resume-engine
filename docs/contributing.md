@@ -80,11 +80,11 @@ The docs will be available at `http://localhost:8000`.
 
 ## Releasing
 
-Releases are triggered by pushing a version tag:
+Releases are triggered by pushing a version tag after TR approves the release:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 GitHub Actions publishes to PyPI automatically via Trusted Publishing.
@@ -93,8 +93,8 @@ Before a release tag:
 
 1. Confirm the next version in `pyproject.toml`
 2. Update `docs/changelog.md`
-3. Check README examples against `resume-engine --help`
+3. Check README and command reference examples against `resume-engine --help`
 4. Run `pytest tests/` and `ruff check .`
 5. Confirm the release is approved by TR
 
-Do not publish ad hoc builds or push release tags from agent work unless the active task explicitly authorizes a package release.
+Agent-created maintenance/docs work should stop at a reviewed PR. Do not publish ad hoc builds or push release tags from agent work unless the active task explicitly authorizes a package release.

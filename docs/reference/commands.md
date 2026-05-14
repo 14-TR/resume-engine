@@ -3,7 +3,7 @@
 
 ## Shared review dashboard schema
 
-`tailor`, `fit`, `interview`, `validate`, and `package --json` share the same top-level envelope:
+`tailor`, `cover`, `package`, `batch`, `ats`, `diff`, `optimize`, `doctor`, `score`, `cover-score`, `fit`, `interview`, and `validate` can emit machine-readable JSON for dashboards, scripts, and CI gates. Review-oriented commands share the same top-level envelope:
 
 ```json
 {
