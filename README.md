@@ -253,7 +253,11 @@ import json
 from pathlib import Path
 
 report = json.loads(Path('validation.json').read_text())
-if report.get('risk_level') in {'high', 'medium'}:
+summary = report.get('summary', {})
+if summary.get('high_severity_issue_count', 0) > 0 or (
+    summary.get('lowest_trust_score') is not None
+    and summary['lowest_trust_score'] < 80
+):
     raise SystemExit('Validation gate failed: review validation.json before sending')
 print('Validation gate passed')
 PY
