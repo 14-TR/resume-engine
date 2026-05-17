@@ -104,6 +104,10 @@ resume-engine package --master resume.md --job posting.txt --outdir ./app/ --for
 resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report --json
 ```
 
+Package output includes `resume.md`, `cover-letter.md`, and `fit-summary.md` by default.
+Add `--validate-report` for `validation-report.md`, `--json` for
+`package-summary.json`, and `--format pdf` for matching PDF copies.
+
 ### score
 
 Instant resume quality score (0-100) across 5 dimensions: structure, readability, quantified achievements, keywords, and impact. No LLM required. Use `--json` for automation-friendly output.

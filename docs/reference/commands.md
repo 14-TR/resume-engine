@@ -123,8 +123,12 @@ Output structure:
 application/
   resume.md
   cover-letter.md
+  fit-summary.md
+  validation-report.md (if --validate-report)
+  package-summary.json (if --json)
   resume.pdf       (if --format pdf)
   cover-letter.pdf (if --format pdf)
+  fit-summary.pdf  (if --format pdf)
 ```
 
 ---

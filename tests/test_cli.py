@@ -571,18 +571,31 @@ class TestPackageCommand:
                 "--outdir",
                 str(outdir),
                 "--validate-report",
+                "--json",
             ],
         )
 
         assert result.exit_code == 0
         assert (outdir / "resume.md").exists()
         assert (outdir / "cover-letter.md").exists()
+        assert (outdir / "fit-summary.md").exists()
         report_path = outdir / "validation-report.md"
         assert report_path.exists()
         report_text = report_path.read_text()
         assert "# Validation Report" in report_text
         assert "## Resume" in report_text
         assert "## Cover-Letter" in report_text
+
+        manifest_path = outdir / "package-summary.json"
+        assert manifest_path.exists()
+        payload = json.loads(manifest_path.read_text())
+        assert payload["schema"] == "resume-engine.dashboard/v1"
+        assert payload["summary"]["includes_validation_report"] is True
+        assert payload["artifacts"]["resume_markdown"].endswith("resume.md")
+        assert payload["artifacts"]["cover_letter_markdown"].endswith("cover-letter.md")
+        assert payload["artifacts"]["fit_summary_markdown"].endswith("fit-summary.md")
+        assert payload["artifacts"]["validation_report_markdown"].endswith("validation-report.md")
+        assert payload["data"]["validation"]["targets"]
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
         import sys
