@@ -23,7 +23,7 @@ Resume Engine takes your master resume and a job posting, and produces a tailore
 |---------|--------------|
 | `tailor` | Tailor resume to a specific job |
 | `cover` | Generate a cover letter |
-| `package` | Full application (resume + cover letter) |
+| `package` | Full application (resume + cover letter + fit summary, with optional validation report and package manifest) |
 | `score` | Score resume quality instantly, with optional JSON output |
 | `cover-score` | Score cover letter quality instantly, with optional JSON output |
 | `fit` | Estimate whether a role is worth applying to before tailoring |
