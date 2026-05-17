@@ -34,7 +34,7 @@ resume-engine cover \
   --output cover-letter.md
 ```
 
-### Full application package (resume + cover letter)
+### Full application package (resume + cover letter + fit summary)
 
 ```bash
 resume-engine package \
@@ -42,6 +42,10 @@ resume-engine package \
   --job examples/job-posting.txt \
   --outdir ./application
 ```
+
+The default package writes `resume.md`, `cover-letter.md`, and `fit-summary.md`. Add
+`--validate-report` for `validation-report.md`, `--json` for `package-summary.json`,
+and `--format pdf` for matching PDF copies.
 
 ### ATS keyword analysis
 

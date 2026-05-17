@@ -514,13 +514,24 @@ def package(
 
     if json_output:
         manifest_path = os.path.join(outdir, "package-summary.json")
+
+        def input_ref(path: str | None) -> str | None:
+            if not path:
+                return path
+            return os.path.basename(path) if os.path.isabs(path) else path
+
+        def artifact_ref(path: str | None) -> str | None:
+            if not path:
+                return path
+            return os.path.relpath(path, outdir)
+
         payload = _dashboard_payload(
             "package",
             inputs={
-                "master": master,
+                "master": input_ref(master),
                 "linkedin_url": linkedin_url,
-                "linkedin_export": linkedin_export,
-                "job": job,
+                "linkedin_export": input_ref(linkedin_export),
+                "job": input_ref(job),
                 "job_url": job_url,
                 "model": model,
                 "format": fmt,
@@ -534,10 +545,10 @@ def package(
                 "includes_validation_report": report is not None,
             },
             artifacts={
-                "resume_markdown": resume_md,
-                "cover_letter_markdown": cover_md,
-                "fit_summary_markdown": fit_summary_path,
-                "validation_report_markdown": validation_path,
+                "resume_markdown": artifact_ref(resume_md),
+                "cover_letter_markdown": artifact_ref(cover_md),
+                "fit_summary_markdown": artifact_ref(fit_summary_path),
+                "validation_report_markdown": artifact_ref(validation_path),
             },
             data={
                 "fit": asdict(fit_result),

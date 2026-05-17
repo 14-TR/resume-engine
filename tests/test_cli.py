@@ -501,6 +501,9 @@ class TestPackageCommand:
         payload = json.loads(manifest_path.read_text())
         assert payload["schema"] == "resume-engine.dashboard/v1"
         assert payload["command"] == "package"
+        assert payload["inputs"]["master"] == "master.md"
+        assert payload["inputs"]["job"] == "job.txt"
+        assert not Path(payload["artifacts"]["fit_summary_markdown"]).is_absolute()
         assert payload["artifacts"]["fit_summary_markdown"].endswith("fit-summary.md")
         assert payload["data"]["fit"]["total"] == 88
         assert payload["data"]["validation"] is None
@@ -591,10 +594,15 @@ class TestPackageCommand:
         payload = json.loads(manifest_path.read_text())
         assert payload["schema"] == "resume-engine.dashboard/v1"
         assert payload["summary"]["includes_validation_report"] is True
-        assert payload["artifacts"]["resume_markdown"].endswith("resume.md")
-        assert payload["artifacts"]["cover_letter_markdown"].endswith("cover-letter.md")
-        assert payload["artifacts"]["fit_summary_markdown"].endswith("fit-summary.md")
-        assert payload["artifacts"]["validation_report_markdown"].endswith("validation-report.md")
+        assert payload["inputs"]["master"] == "master.md"
+        assert payload["inputs"]["job"] == "job.txt"
+        assert payload["artifacts"]["resume_markdown"] == "resume.md"
+        assert payload["artifacts"]["cover_letter_markdown"] == "cover-letter.md"
+        assert payload["artifacts"]["fit_summary_markdown"] == "fit-summary.md"
+        assert payload["artifacts"]["validation_report_markdown"] == "validation-report.md"
+        manifest_text = manifest_path.read_text()
+        assert str(tmp_path) not in manifest_text
+        assert str(outdir) not in manifest_text
         assert payload["data"]["validation"]["targets"]
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
