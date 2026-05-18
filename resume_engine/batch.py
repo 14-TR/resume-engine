@@ -61,6 +61,19 @@ def load_jobs_from_dir(jobs_dir: str) -> list[JobSpec]:
     return jobs
 
 
+def _single_manifest_value(
+    entry: dict, keys: tuple[str, ...], name: str, source_label: str
+) -> str | None:
+    values = [entry[key] for key in keys if entry.get(key)]
+    unique_values = list(dict.fromkeys(values))
+    if len(unique_values) > 1:
+        aliases = ", ".join(keys)
+        raise ValueError(
+            f"Job '{name}' has multiple {source_label} source aliases ({aliases}); use one"
+        )
+    return unique_values[0] if unique_values else None
+
+
 def load_jobs_from_manifest(manifest_path: str) -> list[JobSpec]:
     """Load job specs from a JSON manifest file.
 
@@ -81,13 +94,26 @@ def load_jobs_from_manifest(manifest_path: str) -> list[JobSpec]:
     manifest_dir = str(Path(manifest_path).parent)
 
     for i, entry in enumerate(data):
+        if not isinstance(entry, dict):
+            raise ValueError(f"Manifest entry {i + 1} must be an object")
+
         name = entry.get("name") or entry.get("title") or f"job-{i + 1}"
 
-        job_file = entry.get("job") or entry.get("job_file")
+        job_file = _single_manifest_value(entry, ("job", "job_file"), name, "file")
+        job_url = _single_manifest_value(entry, ("job_url", "url"), name, "URL")
+
+        source_count = sum(1 for source in (job_file, job_url) if source)
+        if source_count == 0:
+            raise ValueError(
+                f"Job '{name}' must provide exactly one job source: job, job_file, job_url, or url"
+            )
+        if source_count > 1:
+            raise ValueError(
+                f"Job '{name}' must provide exactly one job source: job, job_file, job_url, or url"
+            )
+
         if job_file and not os.path.isabs(job_file):
             job_file = os.path.join(manifest_dir, job_file)
-
-        job_url = entry.get("job_url") or entry.get("url")
 
         jobs.append(JobSpec(name=name, job_file=job_file, job_url=job_url))
 

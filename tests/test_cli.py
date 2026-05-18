@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from resume_engine.batch import BatchResult
+from resume_engine.batch import BatchResult, load_jobs_from_manifest
 from resume_engine.cli import main
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -285,6 +285,123 @@ class TestATSCommand:
 
 
 class TestBatchCommand:
+    def test_manifest_rejects_ambiguous_file_and_url_sources(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "ambiguous",
+                        "job": "job.txt",
+                        "job_url": "https://example.com/job",
+                    }
+                ]
+            )
+        )
+
+        def fail_run_batch(**kwargs):
+            raise AssertionError("run_batch should not be called for invalid manifests")
+
+        monkeypatch.setattr("resume_engine.batch.run_batch", fail_run_batch)
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--manifest",
+                str(manifest),
+                "--outdir",
+                str(tmp_path / "out"),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "must provide exactly one job source" in result.output
+        assert "ambiguous" in result.output
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(result.output)
+
+    def test_manifest_rejects_missing_job_source(self, runner, tmp_path, monkeypatch):
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text(json.dumps([{"name": "missing-source"}]))
+
+        def fail_run_batch(**kwargs):
+            raise AssertionError("run_batch should not be called for invalid manifests")
+
+        monkeypatch.setattr("resume_engine.batch.run_batch", fail_run_batch)
+
+        result = runner.invoke(
+            main,
+            [
+                "batch",
+                "--master",
+                str(master_file),
+                "--manifest",
+                str(manifest),
+                "--outdir",
+                str(tmp_path / "out"),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "must provide exactly one job source" in result.output
+        assert "missing-source" in result.output
+
+    def test_manifest_loads_valid_file_and_url_entries(self, tmp_path):
+        jobs_dir = tmp_path / "jobs"
+        jobs_dir.mkdir()
+        job_file = jobs_dir / "local.txt"
+        job_file.write_text("Need a Python developer.")
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text(
+            json.dumps(
+                [
+                    {"name": "local", "job": "jobs/local.txt"},
+                    {"name": "remote", "job_url": "https://example.com/job"},
+                ]
+            )
+        )
+
+        jobs = load_jobs_from_manifest(str(manifest))
+
+        assert [job.name for job in jobs] == ["local", "remote"]
+        assert jobs[0].job_file == str(job_file)
+        assert jobs[0].job_url is None
+        assert jobs[1].job_file is None
+        assert jobs[1].job_url == "https://example.com/job"
+
+    def test_manifest_allows_identical_alias_values(self, tmp_path):
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        manifest = tmp_path / "manifest.json"
+        manifest.write_text(
+            json.dumps(
+                [
+                    {
+                        "name": "duplicate-file-alias",
+                        "job": "job.txt",
+                        "job_file": "job.txt",
+                    }
+                ]
+            )
+        )
+
+        jobs = load_jobs_from_manifest(str(manifest))
+
+        assert len(jobs) == 1
+        assert jobs[0].job_file == str(job_file)
+        assert jobs[0].job_url is None
+
     def test_batch_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\nPython developer\n")

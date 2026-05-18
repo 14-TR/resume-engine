@@ -730,7 +730,10 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
         if not json_output:
             console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
     else:
-        jobs = load_jobs_from_manifest(manifest)
+        try:
+            jobs = load_jobs_from_manifest(manifest)
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from exc
         if not json_output:
             console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
 
