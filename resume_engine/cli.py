@@ -9,6 +9,12 @@ from rich.panel import Panel
 console = Console()
 
 
+def _read_text_file(path: str) -> str:
+    """Read user-provided text files with a consistent encoding."""
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
 def _dashboard_payload(
     command: str,
     *,
@@ -67,8 +73,23 @@ def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: 
         console.print("[dim]Parsing LinkedIn export...[/dim]")
         return parse_linkedin_export(linkedin_export)
 
-    with open(master) as f:  # type: ignore[arg-type]
-        return f.read()
+    return _read_text_file(master)  # type: ignore[arg-type]
+
+
+def _load_job(job: str | None, job_url: str | None) -> str:
+    """Load job posting text from one explicit source."""
+    sources = [source for source in [job, job_url] if source]
+    if len(sources) == 0:
+        raise click.UsageError("Provide either --job or --job-url")
+    if len(sources) > 1:
+        raise click.UsageError("Use only one of --job or --job-url.")
+
+    if job_url:
+        from .scraper import scrape_job_posting
+
+        return scrape_job_posting(job_url)
+
+    return _read_text_file(job)  # type: ignore[arg-type]
 
 
 @click.group()
@@ -129,9 +150,6 @@ def tailor(
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- tailoring resume", style="blue"))
 
@@ -141,13 +159,7 @@ def tailor(
         console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
 
     # Load job posting
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
@@ -272,21 +284,11 @@ def cover(
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     # Interactive gap-filling
     if interactive:
@@ -411,17 +413,7 @@ def package(
     console.print(Panel("[bold]resume-engine[/bold] -- full application package", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
-
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
+    job_text = _load_job(job, job_url)
 
     from .engine import generate_cover_letter, tailor_resume
     from .fit import assess_fit
@@ -579,22 +571,11 @@ def ats(resume, job, job_url, tailored, top, json_output):
 
     from .ats import analyze
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
-    with open(resume) as f:
-        resume_text = f.read()
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    resume_text = _read_text_file(resume)
+    job_text = _load_job(job, job_url)
 
     result = analyze(resume_text, job_text, top_n=top)
     score = result["score"]
@@ -607,8 +588,7 @@ def ats(resume, job, job_url, tailored, top, json_output):
     }
 
     if tailored:
-        with open(tailored) as f:
-            tailored_text = f.read()
+        tailored_text = _read_text_file(tailored)
 
         tailored_result = analyze(tailored_text, job_text, top_n=top)
         tailored_score = tailored_result["score"]
@@ -741,8 +721,7 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
-    with open(master) as f:
-        master_text = f.read()
+    master_text = _read_text_file(master)
     if not json_output:
         console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
@@ -869,8 +848,7 @@ def import_resume(text_file, output, model, from_stdin):
         console.print("[dim]Reading from stdin...[/dim]")
         raw_text = sys.stdin.read()
     else:
-        with open(text_file) as f:
-            raw_text = f.read()
+        raw_text = _read_text_file(text_file)
 
     console.print(f"[dim]Input: {len(raw_text)} chars -- converting to master resume...[/dim]")
 
@@ -1050,10 +1028,8 @@ def diff_cmd(original, tailored, show_unified, show_sections, json_output):
 
     from .differ import compute_diff
 
-    with open(original) as f:
-        orig_text = f.read()
-    with open(tailored) as f:
-        tail_text = f.read()
+    orig_text = _read_text_file(original)
+    tail_text = _read_text_file(tailored)
 
     result = compute_diff(orig_text, tail_text)
 
@@ -1315,8 +1291,7 @@ def score_cmd(resume, brief, json_output):
 
     from .scorer import score_resume
 
-    with open(resume) as f:
-        text = f.read()
+    text = _read_text_file(resume)
 
     result = score_resume(text)
 
@@ -1440,8 +1415,7 @@ def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
 
     from .optimizer import explain_changes, optimize_resume
 
-    with open(resume) as f:
-        original_text = f.read()
+    original_text = _read_text_file(resume)
 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
@@ -1633,21 +1607,11 @@ def interview(
 
     from .interview import generate_interview_prep
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
@@ -1786,8 +1750,7 @@ def cover_score_cmd(cover_letter, brief, json_output):
 
     from .cover_scorer import score_cover_letter
 
-    with open(cover_letter) as f:
-        text = f.read()
+    text = _read_text_file(cover_letter)
 
     result = score_cover_letter(text)
 
@@ -2187,21 +2150,11 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
     from .fit import assess_fit
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Running fit analysis with {model}...[/dim]")
@@ -2369,34 +2322,22 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
 
     from .validate import validate_outputs
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
     if not resume_output and not cover_letter:
         raise click.UsageError("Provide --resume, --cover-letter, or both")
 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
-    with open(master) as f:
-        master_text = f.read()
-
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    else:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    master_text = _read_text_file(master)
+    job_text = _load_job(job, job_url)
 
     resume_text = None
     if resume_output:
-        with open(resume_output) as f:
-            resume_text = f.read()
+        resume_text = _read_text_file(resume_output)
 
     cover_text = None
     if cover_letter:
-        with open(cover_letter) as f:
-            cover_text = f.read()
+        cover_text = _read_text_file(cover_letter)
 
     report = validate_outputs(
         master_text=master_text,

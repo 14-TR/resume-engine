@@ -19,6 +19,94 @@ def runner():
     return CliRunner()
 
 
+class TestSourceLoading:
+    @pytest.mark.parametrize(
+        "command_builder",
+        [
+            lambda master, job, resume, outdir: [
+                "tailor",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+            ],
+            lambda master, job, resume, outdir: [
+                "cover",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+            ],
+            lambda master, job, resume, outdir: [
+                "package",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+                "--outdir",
+                str(outdir),
+            ],
+            lambda master, job, resume, outdir: [
+                "ats",
+                "--resume",
+                str(resume),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+            ],
+            lambda master, job, resume, outdir: [
+                "fit",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+            ],
+            lambda master, job, resume, outdir: [
+                "interview",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+            ],
+            lambda master, job, resume, outdir: [
+                "validate",
+                "--master",
+                str(master),
+                "--job",
+                str(job),
+                "--job-url",
+                "https://example.com/job",
+                "--resume",
+                str(resume),
+            ],
+        ],
+    )
+    def test_job_file_and_job_url_are_mutually_exclusive(self, runner, tmp_path, command_builder):
+        master = tmp_path / "master.md"
+        master.write_text("# Jane Doe\nPython developer\n")
+        job = tmp_path / "job.txt"
+        job.write_text("Need a Python developer.\n")
+        resume = tmp_path / "resume.md"
+        resume.write_text("# Jane Doe\nPython developer\n")
+        outdir = tmp_path / "package"
+
+        result = runner.invoke(main, command_builder(master, job, resume, outdir))
+
+        assert result.exit_code != 0
+        assert "Use only one of --job or --job-url" in result.output
+
+
 class TestCLIHelp:
     def test_main_help(self, runner):
         result = runner.invoke(main, ["--help"])
