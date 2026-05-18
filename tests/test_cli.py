@@ -810,6 +810,90 @@ class TestPackageCommand:
         assert str(outdir) not in manifest_text
         assert payload["data"]["validation"]["targets"]
 
+    def test_package_json_manifest_includes_generated_pdf_artifacts(
+        self, runner, tmp_path, monkeypatch
+    ):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: "Dear team,\n",
+        )
+
+        def fake_markdown_to_pdf(markdown_path, pdf_path):
+            Path(pdf_path).write_text(f"PDF for {Path(markdown_path).name}")
+
+        monkeypatch.setattr("resume_engine.pdf.markdown_to_pdf", fake_markdown_to_pdf)
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=[],
+            gaps=[],
+            raw_analysis="",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--format",
+                "pdf",
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        payload = json.loads((outdir / "package-summary.json").read_text())
+        assert payload["artifacts"]["resume_pdf"] == "resume.pdf"
+        assert payload["artifacts"]["cover_letter_pdf"] == "cover-letter.pdf"
+        assert payload["artifacts"]["fit_summary_pdf"] == "fit-summary.pdf"
+        assert not Path(payload["artifacts"]["resume_pdf"]).is_absolute()
+        assert (outdir / "resume.pdf").exists()
+        assert (outdir / "cover-letter.pdf").exists()
+        assert (outdir / "fit-summary.pdf").exists()
+
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
         import sys
         import types

@@ -61,7 +61,7 @@ When `--format pdf` is used, Resume Engine always writes the markdown file first
 | `package --outdir app/ --format pdf` | `app/resume.md`, `app/cover-letter.md`, `app/fit-summary.md` | `app/resume.pdf`, `app/cover-letter.pdf`, `app/fit-summary.pdf` |
 | `batch --outdir apps/ --format pdf` | per-job `.md` files | per-job `.pdf` files |
 
-Add `--validate-report` to include `validation-report.md`, and add `--json` to include `package-summary.json`. The package manifest stores portable file references instead of absolute local paths.
+Add `--validate-report` to include `validation-report.md`, and add `--json` to include `package-summary.json`. The package manifest stores portable file references instead of absolute local paths, including generated PDF references when `--format pdf` is enabled.
 
 ## PDF Styling
 

@@ -106,7 +106,9 @@ resume-engine package --master resume.md --job posting.txt --outdir ./applicatio
 
 Package output includes `resume.md`, `cover-letter.md`, and `fit-summary.md` by default.
 Add `--validate-report` for `validation-report.md`, `--json` for
-`package-summary.json`, and `--format pdf` for matching PDF copies.
+`package-summary.json`, and `--format pdf` for matching PDF copies. When
+`--format pdf --json` are used together, the manifest includes portable
+references to the generated PDF artifacts as well as the markdown files.
 
 ### score
 
