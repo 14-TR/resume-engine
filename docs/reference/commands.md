@@ -135,6 +135,13 @@ When `--format pdf --json` are used together, `package-summary.json` includes
 portable artifact references for the generated PDFs in addition to the markdown
 outputs.
 
+When `--validate-report --json` is enabled, `package-summary.json` also records
+`summary.validation_status`, `summary.validation_risk_level`,
+`summary.validation_high_severity_issue_count`, and
+`summary.validation_lowest_trust_score`. Packages with high-severity validation
+findings or very low trust scores are marked `needs_review`, and the CLI prints a
+review warning rather than a ready-to-send completion line.
+
 ---
 
 ## `ats`

@@ -269,6 +269,14 @@ print('Validation gate passed')
 PY
 ```
 
+When `package --validate-report --json` is used, the generated
+`package-summary.json` includes the same readiness signal in
+`summary.validation_status`, `summary.validation_risk_level`,
+`summary.validation_high_severity_issue_count`, and
+`summary.validation_lowest_trust_score`. High-severity validation findings or
+very low trust scores mark the package as `needs_review` and print a warning
+instead of a ready-to-send message.
+
 ### config
 
 Save defaults so you don't repeat flags on every command.

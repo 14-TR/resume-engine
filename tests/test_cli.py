@@ -810,6 +810,117 @@ class TestPackageCommand:
         assert str(outdir) not in manifest_text
         assert payload["data"]["validation"]["targets"]
 
+    def test_package_flags_high_risk_validation_findings(self, runner, tmp_path, monkeypatch):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: "Dear team,\n",
+        )
+
+        @dataclass
+        class FitResult:
+            total: int = 88
+            dimensions: list = field(default_factory=list)
+            verdict: str = "Strong fit"
+            recommendation: str = "Apply"
+            strengths: list = field(default_factory=list)
+            gaps: list = field(default_factory=list)
+            raw_analysis: str = ""
+            ats_score: int = 90
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: (
+            FitResult()
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
+
+        @dataclass
+        class ValidationIssue:
+            severity: str
+            category: str
+            message: str
+            evidence: str = ""
+            suggestion: str = ""
+
+        @dataclass
+        class ValidationTarget:
+            label: str
+            score: int
+            issues: list[ValidationIssue] = field(default_factory=list)
+
+        @dataclass
+        class ValidationReport:
+            targets: list[ValidationTarget]
+
+        validate_stub = types.ModuleType("resume_engine.validate")
+        validate_stub.validate_outputs = lambda **kwargs: ValidationReport(
+            targets=[
+                ValidationTarget(
+                    label="resume",
+                    score=46,
+                    issues=[
+                        ValidationIssue(
+                            severity="high",
+                            category="unsupported claim",
+                            message="Company drift",
+                        )
+                    ],
+                ),
+                ValidationTarget(
+                    label="cover-letter",
+                    score=0,
+                    issues=[
+                        ValidationIssue(
+                            severity="high",
+                            category="unsupported claim",
+                            message="Role drift",
+                        )
+                    ],
+                ),
+            ]
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.validate", validate_stub)
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--validate-report",
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Validation review needed: high risk" in result.output
+        assert "review validation findings before sending" in result.output
+        assert "Application package ready" not in result.output
+
+        payload = json.loads((outdir / "package-summary.json").read_text())
+        assert payload["summary"]["validation_status"] == "needs_review"
+        assert payload["summary"]["validation_risk_level"] == "high"
+        assert payload["summary"]["validation_issue_count"] == 2
+        assert payload["summary"]["validation_high_severity_issue_count"] == 2
+        assert payload["summary"]["validation_lowest_trust_score"] == 0
+
     def test_package_json_manifest_includes_generated_pdf_artifacts(
         self, runner, tmp_path, monkeypatch
     ):
