@@ -131,6 +131,10 @@ application/
   fit-summary.pdf  (if --format pdf)
 ```
 
+When `--format pdf --json` are used together, `package-summary.json` includes
+portable artifact references for the generated PDFs in addition to the markdown
+outputs.
+
 ---
 
 ## `ats`

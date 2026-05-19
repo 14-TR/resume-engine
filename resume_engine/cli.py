@@ -459,14 +459,20 @@ def package(
         f.writelines(fit_lines)
     console.print(f"[green]Fit summary written to {fit_summary_path}[/green]")
 
+    pdf_paths = {}
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
+        pdf_paths = {
+            "resume_pdf": md_path_to_pdf_path(resume_md),
+            "cover_letter_pdf": md_path_to_pdf_path(cover_md),
+            "fit_summary_pdf": md_path_to_pdf_path(fit_summary_path),
+        }
         try:
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
-            markdown_to_pdf(resume_md, md_path_to_pdf_path(resume_md))
-            markdown_to_pdf(cover_md, md_path_to_pdf_path(cover_md))
-            markdown_to_pdf(fit_summary_path, md_path_to_pdf_path(fit_summary_path))
+            markdown_to_pdf(resume_md, pdf_paths["resume_pdf"])
+            markdown_to_pdf(cover_md, pdf_paths["cover_letter_pdf"])
+            markdown_to_pdf(fit_summary_path, pdf_paths["fit_summary_pdf"])
             console.print("[green]PDFs generated[/green]")
         except RuntimeError as e:
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
@@ -517,6 +523,16 @@ def package(
                 return path
             return os.path.relpath(path, outdir)
 
+        artifacts = {
+            "resume_markdown": artifact_ref(resume_md),
+            "cover_letter_markdown": artifact_ref(cover_md),
+            "fit_summary_markdown": artifact_ref(fit_summary_path),
+            "validation_report_markdown": artifact_ref(validation_path),
+        }
+        for key, path in pdf_paths.items():
+            if os.path.exists(path):
+                artifacts[key] = artifact_ref(path)
+
         payload = _dashboard_payload(
             "package",
             inputs={
@@ -536,12 +552,7 @@ def package(
                 "fit_recommendation": fit_result.recommendation,
                 "includes_validation_report": report is not None,
             },
-            artifacts={
-                "resume_markdown": artifact_ref(resume_md),
-                "cover_letter_markdown": artifact_ref(cover_md),
-                "fit_summary_markdown": artifact_ref(fit_summary_path),
-                "validation_report_markdown": artifact_ref(validation_path),
-            },
+            artifacts=artifacts,
             data={
                 "fit": asdict(fit_result),
                 "validation": asdict(report) if report else None,
