@@ -44,6 +44,44 @@ def _print_dashboard_json(payload: dict) -> None:
     console.print_json(json.dumps(payload))
 
 
+def _validation_readiness(report) -> dict:
+    """Summarize validation risk for package and dashboard workflows."""
+    if report is None:
+        return {
+            "status": "not_run",
+            "risk_level": "unknown",
+            "issue_count": 0,
+            "high_severity_issue_count": 0,
+            "lowest_trust_score": None,
+        }
+
+    targets = getattr(report, "targets", [])
+    issues = [issue for target in targets for issue in getattr(target, "issues", [])]
+    high_severity = sum(1 for issue in issues if getattr(issue, "severity", None) == "high")
+    scores = [
+        getattr(target, "score") for target in targets if getattr(target, "score", None) is not None
+    ]
+    lowest_score = min(scores) if scores else None
+
+    if high_severity > 0 or (lowest_score is not None and lowest_score < 60):
+        status = "needs_review"
+        risk_level = "high"
+    elif issues or (lowest_score is not None and lowest_score < 80):
+        status = "needs_review"
+        risk_level = "medium"
+    else:
+        status = "ready"
+        risk_level = "low"
+
+    return {
+        "status": status,
+        "risk_level": risk_level,
+        "issue_count": len(issues),
+        "high_severity_issue_count": high_severity,
+        "lowest_trust_score": lowest_score,
+    }
+
+
 def _cfg_default(key: str, fallback=None):
     """Return config default for a key, used as Click option defaults."""
     from .config import get as cfg_get
@@ -479,6 +517,7 @@ def package(
 
     report = None
     validation_path = None
+    validation_readiness = _validation_readiness(None)
     if validate_report:
         from .validate import validate_outputs
 
@@ -509,6 +548,15 @@ def package(
         with open(validation_path, "w") as f:
             f.writelines(md_lines)
         console.print(f"[green]Validation report written to {validation_path}[/green]")
+        validation_readiness = _validation_readiness(report)
+
+        if validation_readiness["status"] != "ready":
+            console.print(
+                "[bold yellow]Validation review needed: "
+                f"{validation_readiness['risk_level']} risk, "
+                f"{validation_readiness['high_severity_issue_count']} high-severity issues, "
+                f"lowest trust score {validation_readiness['lowest_trust_score']}.[/bold yellow]"
+            )
 
     if json_output:
         manifest_path = os.path.join(outdir, "package-summary.json")
@@ -551,6 +599,13 @@ def package(
                 "fit_verdict": fit_result.verdict,
                 "fit_recommendation": fit_result.recommendation,
                 "includes_validation_report": report is not None,
+                "validation_status": validation_readiness["status"],
+                "validation_risk_level": validation_readiness["risk_level"],
+                "validation_issue_count": validation_readiness["issue_count"],
+                "validation_high_severity_issue_count": validation_readiness[
+                    "high_severity_issue_count"
+                ],
+                "validation_lowest_trust_score": validation_readiness["lowest_trust_score"],
             },
             artifacts=artifacts,
             data={
@@ -562,7 +617,13 @@ def package(
             json.dump(payload, f, indent=2)
         console.print(f"[green]Package manifest written to {manifest_path}[/green]")
 
-    console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
+    if validation_readiness["status"] == "needs_review":
+        console.print(
+            f"\n[bold yellow]Application package generated in {outdir}/; "
+            "review validation findings before sending.[/bold yellow]"
+        )
+    else:
+        console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
 
 @main.command()
