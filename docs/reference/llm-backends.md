@@ -75,7 +75,7 @@ resume-engine tailor --master resume.md --job posting.txt --model anthropic
 ```
 
 **Notes:**
-- Uses Claude Haiku by default (fast and affordable)
+- Uses `claude-sonnet-4-20250514` by default
 - Excellent at following formatting instructions
 
 ---

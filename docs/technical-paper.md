@@ -147,13 +147,12 @@ A representative command such as `tailor` follows a simple orchestration templat
 `resume_engine/llm.py` implements a simple provider switch. `complete(prompt, model)` dispatches to `_ollama`, `_openai`, or `_anthropic` (`llm.py:11-20`). Key design choices:
 
 - Ollama default: `OLLAMA_URL` defaults to `http://localhost:11434`, model to `qwen2.5:14b` (`llm.py:7-8`)
+- cloud defaults: OpenAI uses `gpt-4o-mini`, while Anthropic uses `claude-sonnet-4-20250514`
 - no SDK dependency: all providers are called via raw `httpx.post`
 - uniform string contract: every backend returns plain text stripped from the HTTP response
 - bounded generation parameters: temperature 0.3 and max token style caps for all backends
 
 The abstraction is intentionally thin. There is no retry logic, rate limiting, schema enforcement, caching, or streaming support. This simplicity makes the module easy to understand and minimizes external dependencies, but it also means reliability is almost entirely delegated to upstream providers. The code expects providers to be available and reasonably compliant.
-
-One concrete inconsistency is visible between code and docs: `docs/reference/llm-backends.md` states Anthropic uses Claude Haiku, but `llm.py:57-72` is hardcoded to `claude-sonnet-4-20250514`. That is a documentation drift issue with user-facing consequences, especially around price and behavior expectations.
 
 ### 3.4 Generation Modules
 
@@ -345,16 +344,15 @@ That said, heuristic grounding checks can yield both false positives and false n
 
 Several issues are visible from direct inspection:
 
-1. documentation drift: `docs/reference/llm-backends.md` says Anthropic uses Claude Haiku, but `llm.py:57-72` hardcodes `claude-sonnet-4-20250514`
-2. duplicate import logic: `engine.py` and `importer.py` each define their own import prompt and function
-3. CLI size: `cli.py` is nearly two thousand lines, making it the primary maintenance hotspot
-4. HTML scraping brittleness: `scraper.py` and parts of `linkedin.py` use regex-heavy extraction that will fail on highly scripted pages
-5. no formal schemas for most LLM output: only `interactive.py` tries to coerce JSON
-6. sequential batch execution: practical for individuals, slow for large application bursts
-7. potential false positives in validation: `validate.py` uses heuristic token grounding and `SequenceMatcher`
-8. template system is prompt-only: it affects generation guidance but not a real renderer/layout engine
-9. init formatting divergence: `init.py:74-81` renders experience as `Title | Company`, whereas import prompts and docs standardize on `Title -- Company`
-10. test environment dependency coupling: modules import `httpx` at load time, which prevented partial test collection in a misconfigured environment
+1. duplicate import logic: `engine.py` and `importer.py` each define their own import prompt and function
+2. CLI size: `cli.py` is nearly two thousand lines, making it the primary maintenance hotspot
+3. HTML scraping brittleness: `scraper.py` and parts of `linkedin.py` use regex-heavy extraction that will fail on highly scripted pages
+4. no formal schemas for most LLM output: only `interactive.py` tries to coerce JSON
+5. sequential batch execution: practical for individuals, slow for large application bursts
+6. potential false positives in validation: `validate.py` uses heuristic token grounding and `SequenceMatcher`
+7. template system is prompt-only: it affects generation guidance but not a real renderer/layout engine
+8. init formatting divergence: `init.py:74-81` renders experience as `Title | Company`, whereas import prompts and docs standardize on `Title -- Company`
+9. test environment dependency coupling: modules import `httpx` at load time, which prevented partial test collection in a misconfigured environment
 
 Two additional architectural debts are worth noting. First, the project has a lot of prompt logic but very little structured output enforcement. Most parsing is regex-based over freeform text. That works surprisingly well when prompts are stable, but it introduces fragility as models or prompt wording evolve. Second, many commands are operationally similar but implemented independently in the CLI. That speeds feature addition early on, but it accumulates maintenance cost over time.
 
@@ -538,7 +536,6 @@ The repository contains focused tests for nearly every module, including ATS ana
 
 ### 10.5 Audit Red Flags
 
-- Documentation and implementation disagree on the Anthropic backend model.
 - Import functionality is duplicated.
 - Resume formatting conventions differ between `init.py` and prompt-based import docs.
 - Scraping remains heuristic and fragile.
