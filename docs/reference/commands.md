@@ -76,6 +76,8 @@ resume-engine cover [OPTIONS]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--master` | (required) | Path to master resume (markdown) |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
 | `--job` | — | Path to job posting text file |
 | `--job-url` | — | URL of job posting to scrape |
 | `--output` | `cover-letter.md` | Output file path |
@@ -83,6 +85,7 @@ resume-engine cover [OPTIONS]
 | `--format` | `md` | Output format: `md`, `pdf` |
 | `--interactive` | off | Ask gap-filling questions first |
 | `--template` | — | Cover letter style |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
 
 **Example:**
 
@@ -161,6 +164,7 @@ resume-engine ats [OPTIONS]
 | `--job-url` | — | URL of job posting to scrape |
 | `--tailored` | — | Tailored resume for before/after comparison |
 | `--top` | `30` | Number of keywords to extract |
+| `--json` | off | Emit automation-friendly keyword results as JSON |
 
 **Example:**
 
@@ -198,6 +202,7 @@ resume-engine batch [OPTIONS]
 | `--format` | `md` | Output format |
 | `--template` | — | Resume style |
 | `--with-cover` | off | Also generate cover letters |
+| `--json` | off | Emit `resume-engine.dashboard/v1` batch results to stdout |
 
 Either `--jobs-dir` or `--manifest` is required (not both).
 
@@ -246,6 +251,234 @@ resume-engine import --text raw.txt --output master.md --model openai
 
 ---
 
+## `init`
+
+Create a starter master resume through the guided resume builder.
+
+```bash
+resume-engine init [OPTIONS]
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--output` | `master-resume.md` | Output file path |
+
+---
+
+## `score`
+
+Score resume quality instantly without an LLM.
+
+```bash
+resume-engine score [OPTIONS] RESUME
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `RESUME` | (required) | Resume markdown file to score |
+| `--brief` | off | Print a compact score summary |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+---
+
+## `cover-score`
+
+Score cover letter quality instantly without an LLM.
+
+```bash
+resume-engine cover-score [OPTIONS] COVER_LETTER
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `COVER_LETTER` | (required) | Cover letter file to score |
+| `--brief` | off | Print a compact score summary |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+---
+
+## `fit`
+
+Estimate whether a job is worth applying to before tailoring.
+
+```bash
+resume-engine fit [OPTIONS]
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--master` | (required) | Path to master resume |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
+| `--job` | — | Path to job posting text file |
+| `--job-url` | — | URL of job posting to scrape |
+| `--model` | `ollama` | LLM backend |
+| `--brief` | off | Print a compact fit summary |
+| `--output` | — | Optional markdown output file |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+Either `--job` or `--job-url` is required.
+
+---
+
+## `interview`
+
+Generate tailored interview prep from a resume and job posting.
+
+```bash
+resume-engine interview [OPTIONS]
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--master` | (required) | Path to master resume |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
+| `--job` | — | Path to job posting text file |
+| `--job-url` | — | URL of job posting to scrape |
+| `--count` | `10` | Number of questions to generate |
+| `--model` | `ollama` | LLM backend |
+| `--with-followups` | off | Include follow-up questions |
+| `--output` | — | Optional markdown output file |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+Either `--job` or `--job-url` is required.
+
+---
+
+## `validate`
+
+Run grounded trust checks before sending a tailored resume or cover letter.
+
+```bash
+resume-engine validate [OPTIONS]
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--master` | (required) | Path to master resume |
+| `--job` | — | Path to job posting text file |
+| `--job-url` | — | URL of job posting to scrape |
+| `--resume` | — | Tailored resume to validate |
+| `--cover-letter` | — | Cover letter to validate |
+| `--output` | — | Optional markdown report path |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+Either `--resume` or `--cover-letter` is required.
+
+---
+
+## `optimize`
+
+Improve a resume without targeting a specific job posting.
+
+```bash
+resume-engine optimize [OPTIONS] RESUME
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `RESUME` | (required) | Resume markdown file to optimize |
+| `--output` | `optimized-resume.md` | Output file path |
+| `--model` | `ollama` | LLM backend |
+| `--format` | `md` | Output format: `md`, `pdf` |
+| `--explain` | off | Print a summary of changes |
+| `--diff` | off | Print a section-level diff |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+---
+
+## `diff`
+
+Compare original and tailored resumes section by section.
+
+```bash
+resume-engine diff [OPTIONS] ORIGINAL TAILORED
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `ORIGINAL` | (required) | Original resume markdown file |
+| `TAILORED` | (required) | Tailored resume markdown file |
+| `--unified` | off | Include unified text diff output |
+| `--sections` | off | Print section-level changes |
+| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+
+---
+
+## `doctor`
+
+Diagnose local setup issues before tailoring, PDF export, or provider changes.
+
+```bash
+resume-engine doctor [OPTIONS]
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--strict` | off | Exit non-zero when required checks fail |
+| `--json` | off | Emit machine-readable setup results |
+
+---
+
+## `config`
+
+Save and inspect CLI defaults such as model, format, output directory, and template.
+
+```bash
+resume-engine config COMMAND [OPTIONS]
+```
+
+**Subcommands:**
+
+| Command | Description |
+|---------|-------------|
+| `list` | Show saved defaults |
+| `get KEY` | Show one default value |
+| `set KEY VALUE` | Save a default value |
+| `unset KEY` | Remove one saved default |
+| `reset --yes` | Clear all saved defaults |
+
+---
+
+## `track`
+
+Manage the local SQLite-backed application tracker.
+
+```bash
+resume-engine track COMMAND [OPTIONS]
+```
+
+**Subcommands:**
+
+| Command | Description |
+|---------|-------------|
+| `add` | Log a new application |
+| `list` | List applications, optionally filtered |
+| `show APP_ID` | Show one application |
+| `update APP_ID` | Update status, notes, or URL |
+| `stats` | Summarize the pipeline by status |
+| `export` | Export applications to JSON or CSV |
+| `delete APP_ID --yes` | Remove an application |
+
 ---
 
 ## `check`
@@ -281,6 +514,23 @@ All required checks passed. resume-engine is ready to use.
 ```
 
 Run this after installing to confirm your setup is working before processing your first resume.
+
+## `templates`
+
+Manage resume layout styles.
+
+```bash
+resume-engine templates COMMAND [OPTIONS]
+```
+
+**Subcommands:**
+
+| Command | Description |
+|---------|-------------|
+| `list` | List available templates |
+| `show NAME` | Show layout instructions for a template |
+
+---
 
 ## `templates list`
 
