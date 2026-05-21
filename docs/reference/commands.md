@@ -34,6 +34,8 @@ resume-engine tailor [OPTIONS]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--master` | (required) | Path to master resume (markdown) |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
 | `--job` | — | Path to job posting text file |
 | `--job-url` | — | URL of job posting to scrape |
 | `--output` | `tailored-resume.md` | Output file path |
@@ -112,6 +114,8 @@ resume-engine package [OPTIONS]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--master` | (required) | Path to master resume (markdown) |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
 | `--job` | — | Path to job posting text file |
 | `--job-url` | — | URL of job posting to scrape |
 | `--outdir` | `./application` | Output directory |
@@ -119,7 +123,9 @@ resume-engine package [OPTIONS]
 | `--format` | `md` | Output format: `md`, `pdf` |
 | `--template` | — | Style for both documents |
 | `--validate-report` | off | Generate grounded validation markdown in the package |
+| `--no-validate-report` | on | Skip grounded validation report generation |
 | `--json` | off | Write a `resume-engine.dashboard/v1` manifest JSON |
+| `--no-json` | on | Skip manifest JSON generation |
 
 Output structure:
 ```
