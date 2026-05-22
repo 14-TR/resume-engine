@@ -16,10 +16,11 @@ Run the tests:
 pytest tests/
 ```
 
-Run the linter:
+Run the CI-equivalent lint and format checks:
 
 ```bash
-ruff check .
+ruff check resume_engine/ tests/
+ruff format --check resume_engine/ tests/
 ```
 
 ## Project Structure
@@ -76,7 +77,7 @@ The docs will be available at `http://localhost:8000`.
 - Keep PRs focused -- one feature or fix per PR
 - Include tests for new behavior
 - Update `docs/` and `CHANGELOG.md` if applicable
-- Run `pytest tests/` and `ruff check .` before submitting
+- Run `pytest tests/`, `ruff check resume_engine/ tests/`, and `ruff format --check resume_engine/ tests/` before submitting
 
 ## Releasing
 
@@ -94,7 +95,7 @@ Before a release tag:
 1. Confirm the next version in `pyproject.toml`
 2. Update `docs/changelog.md`
 3. Check README and command reference examples against `resume-engine --help`
-4. Run `pytest tests/` and `ruff check .`
+4. Run `pytest tests/`, `ruff check resume_engine/ tests/`, and `ruff format --check resume_engine/ tests/`
 5. Confirm the release is approved by TR
 
 Agent-created maintenance/docs work should stop at a reviewed PR. Do not publish ad hoc builds or push release tags from agent work unless the active task explicitly authorizes a package release.

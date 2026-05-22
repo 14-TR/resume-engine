@@ -50,3 +50,12 @@ def test_command_reference_covers_live_command_options():
             missing_options[name] = command_missing
 
     assert missing_options == {}
+
+
+def test_contributing_docs_match_ci_quality_gates():
+    docs = (REPO_ROOT / "docs/contributing.md").read_text()
+
+    assert "pytest tests/" in docs
+    assert "ruff check resume_engine/ tests/" in docs
+    assert "ruff format --check resume_engine/ tests/" in docs
+    assert "ruff check ." not in docs
