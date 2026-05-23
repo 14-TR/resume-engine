@@ -5,6 +5,7 @@ All notable changes to Resume Engine are documented here.
 ## [Unreleased]
 
 ### Changed
+- Extended the quickstart with the grounded validation gate and full package handoff so first-time users see the trust review path before sending applications.
 - Aligned contributing and release-check commands with the CI Ruff lint/format scopes.
 - Clarified release documentation for maintenance/adoption work after the 0.3.1 package surface.
 - Kept release ownership explicit: agent work should prepare docs/PRs for review, not push tags or publish packages without TR approval.

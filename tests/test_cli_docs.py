@@ -59,3 +59,17 @@ def test_contributing_docs_match_ci_quality_gates():
     assert "ruff check resume_engine/ tests/" in docs
     assert "ruff format --check resume_engine/ tests/" in docs
     assert "ruff check ." not in docs
+
+
+def test_quickstart_keeps_trust_gate_and_package_handoff_visible():
+    docs = (REPO_ROOT / "docs/getting-started/quickstart.md").read_text()
+
+    assert "## Step 4: Tailor your resume" in docs
+    assert "## Step 6: Validate before sending" in docs
+    assert "resume-engine validate" in docs
+    assert "--resume tailored-resume.md" in docs
+    assert "--json > validation.json" in docs
+    assert "## Step 7: Build the full application package" in docs
+    assert "resume-engine package" in docs
+    assert "--validate-report" in docs
+    assert "package-summary.json" in docs
