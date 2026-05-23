@@ -94,6 +94,55 @@ Still missing:
   billing  usage metering  tenant provisioning
 ```
 
+## Step 6: Validate before sending
+
+Run the grounded validator against the tailored resume before you send it. This catches likely unsupported claims, title/date/company drift, and suspicious rewrites against your master resume and the job posting.
+
+```bash
+resume-engine validate \
+  --master master-resume.md \
+  --job job-posting.txt \
+  --resume tailored-resume.md
+```
+
+For scripts or dashboards, use the shared JSON review schema:
+
+```bash
+resume-engine validate \
+  --master master-resume.md \
+  --job job-posting.txt \
+  --resume tailored-resume.md \
+  --json > validation.json
+```
+
+Review high-severity findings before you submit the resume. The validator is the last trust check between generated output and a real application.
+
+## Step 7: Build the full application package
+
+When the tailored resume is ready, generate the matching cover letter, fit summary, optional validation report, and package manifest in one directory:
+
+```bash
+resume-engine package \
+  --master master-resume.md \
+  --job job-posting.txt \
+  --outdir ./application \
+  --validate-report \
+  --json
+```
+
+This writes:
+
+```text
+application/
+  resume.md
+  cover-letter.md
+  fit-summary.md
+  validation-report.md
+  package-summary.json
+```
+
+Open `validation-report.md` and confirm `package-summary.json` reports a ready validation status before sending the package.
+
 ## What's next?
 
 - Generate a cover letter: [cover command](../reference/commands.md#cover)
