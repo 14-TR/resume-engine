@@ -9,7 +9,7 @@ All notable changes to Resume Engine are documented here.
 - Aligned contributing and release-check commands with the CI Ruff lint/format scopes.
 - Clarified release documentation for maintenance/adoption work after the 0.3.1 package surface.
 - Kept release ownership explicit: agent work should prepare docs/PRs for review, not push tags or publish packages without TR approval.
-- Centralized CLI text-source loading and made `--job` / `--job-url` mutually exclusive for single-job commands.
+- Centralized CLI and batch text-source loading and made `--job` / `--job-url` mutually exclusive for single-job commands.
 - Included generated PDF artifact references in `package-summary.json` when `package --format pdf --json` is used.
 - Documented the Anthropic backend's actual default model and added a regression guard for cloud model docs drift.
 

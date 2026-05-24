@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+import click
 from rich.console import Console
 from rich.progress import (
     BarColumn,
@@ -20,6 +21,8 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from .source import load_job_posting, read_text_file
+
 
 @dataclass
 class JobSpec:
@@ -30,14 +33,10 @@ class JobSpec:
     job_url: Optional[str] = None
 
     def load_text(self) -> str:
-        if self.job_file:
-            with open(self.job_file) as f:
-                return f.read()
-        elif self.job_url:
-            from .scraper import scrape_job_posting
-
-            return scrape_job_posting(self.job_url)
-        raise ValueError(f"Job '{self.name}' has no file or URL")
+        try:
+            return load_job_posting(self.job_file, self.job_url)
+        except click.UsageError as e:
+            raise ValueError(f"Job '{self.name}': {e.message}") from e
 
 
 @dataclass
@@ -84,8 +83,7 @@ def load_jobs_from_manifest(manifest_path: str) -> list[JobSpec]:
         {"name": "big-co",     "job": "jobs/bigco.txt"}
       ]
     """
-    with open(manifest_path) as f:
-        data = json.load(f)
+    data = json.loads(read_text_file(manifest_path))
 
     if not isinstance(data, list):
         raise ValueError("Manifest must be a JSON array")

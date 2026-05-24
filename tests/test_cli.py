@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from resume_engine.batch import BatchResult, load_jobs_from_manifest
+from resume_engine.batch import BatchResult, JobSpec, load_jobs_from_manifest
 from resume_engine.cli import main
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -105,6 +105,16 @@ class TestSourceLoading:
 
         assert result.exit_code != 0
         assert "Use only one of --job or --job-url" in result.output
+
+    def test_batch_job_spec_uses_shared_job_source_validation(self):
+        job = JobSpec(
+            name="bad-job",
+            job_file="job.txt",
+            job_url="https://example.com/job",
+        )
+
+        with pytest.raises(ValueError, match="Use only one of --job or --job-url"):
+            job.load_text()
 
 
 class TestCLIHelp:

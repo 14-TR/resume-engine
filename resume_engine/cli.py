@@ -6,13 +6,9 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
+from .source import read_text_file
+
 console = Console()
-
-
-def _read_text_file(path: str) -> str:
-    """Read user-provided text files with a consistent encoding."""
-    with open(path, encoding="utf-8") as f:
-        return f.read()
 
 
 def _dashboard_payload(
@@ -91,43 +87,16 @@ def _cfg_default(key: str, fallback=None):
 
 def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: str | None) -> str:
     """Load master resume text from a file, LinkedIn URL, or LinkedIn export."""
-    sources = [s for s in [master, linkedin_url, linkedin_export] if s]
-    if len(sources) == 0:
-        raise click.UsageError(
-            "Provide --master, --linkedin-url, or --linkedin-export as the resume source."
-        )
-    if len(sources) > 1:
-        raise click.UsageError("Use only one of --master, --linkedin-url, or --linkedin-export.")
+    from .source import load_master_resume
 
-    if linkedin_url:
-        from .linkedin import scrape_linkedin_profile
-
-        console.print("[dim]Fetching LinkedIn profile...[/dim]")
-        return scrape_linkedin_profile(linkedin_url)
-
-    if linkedin_export:
-        from .linkedin import parse_linkedin_export
-
-        console.print("[dim]Parsing LinkedIn export...[/dim]")
-        return parse_linkedin_export(linkedin_export)
-
-    return _read_text_file(master)  # type: ignore[arg-type]
+    return load_master_resume(master, linkedin_url, linkedin_export, status=console.print)
 
 
 def _load_job(job: str | None, job_url: str | None) -> str:
     """Load job posting text from one explicit source."""
-    sources = [source for source in [job, job_url] if source]
-    if len(sources) == 0:
-        raise click.UsageError("Provide either --job or --job-url")
-    if len(sources) > 1:
-        raise click.UsageError("Use only one of --job or --job-url.")
+    from .source import load_job_posting
 
-    if job_url:
-        from .scraper import scrape_job_posting
-
-        return scrape_job_posting(job_url)
-
-    return _read_text_file(job)  # type: ignore[arg-type]
+    return load_job_posting(job, job_url)
 
 
 @click.group()
@@ -646,7 +615,7 @@ def ats(resume, job, job_url, tailored, top, json_output):
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
-    resume_text = _read_text_file(resume)
+    resume_text = read_text_file(resume)
     job_text = _load_job(job, job_url)
 
     result = analyze(resume_text, job_text, top_n=top)
@@ -660,7 +629,7 @@ def ats(resume, job, job_url, tailored, top, json_output):
     }
 
     if tailored:
-        tailored_text = _read_text_file(tailored)
+        tailored_text = read_text_file(tailored)
 
         tailored_result = analyze(tailored_text, job_text, top_n=top)
         tailored_score = tailored_result["score"]
@@ -793,7 +762,7 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
-    master_text = _read_text_file(master)
+    master_text = read_text_file(master)
     if not json_output:
         console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
@@ -908,22 +877,14 @@ def import_resume(text_file, output, model, from_stdin):
       # From stdin (paste directly)
       pbpaste | resume-engine import --stdin --output master-resume.md --model openai
     """
-    import sys
-
     from .importer import text_to_master_resume
-
-    if not text_file and not from_stdin:
-        raise click.UsageError("Provide --text <file> or --stdin to read from stdin")
-    if text_file and from_stdin:
-        raise click.UsageError("Use --text OR --stdin, not both")
+    from .source import load_raw_resume_text
 
     console.print(Panel("[bold]resume-engine[/bold] -- importing resume", style="blue"))
 
     if from_stdin:
         console.print("[dim]Reading from stdin...[/dim]")
-        raw_text = sys.stdin.read()
-    else:
-        raw_text = _read_text_file(text_file)
+    raw_text = load_raw_resume_text(text_file, from_stdin)
 
     console.print(f"[dim]Input: {len(raw_text)} chars -- converting to master resume...[/dim]")
 
@@ -1103,8 +1064,8 @@ def diff_cmd(original, tailored, show_unified, show_sections, json_output):
 
     from .differ import compute_diff
 
-    orig_text = _read_text_file(original)
-    tail_text = _read_text_file(tailored)
+    orig_text = read_text_file(original)
+    tail_text = read_text_file(tailored)
 
     result = compute_diff(orig_text, tail_text)
 
@@ -1366,7 +1327,7 @@ def score_cmd(resume, brief, json_output):
 
     from .scorer import score_resume
 
-    text = _read_text_file(resume)
+    text = read_text_file(resume)
 
     result = score_resume(text)
 
@@ -1490,7 +1451,7 @@ def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
 
     from .optimizer import explain_changes, optimize_resume
 
-    original_text = _read_text_file(resume)
+    original_text = read_text_file(resume)
 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
@@ -1825,7 +1786,7 @@ def cover_score_cmd(cover_letter, brief, json_output):
 
     from .cover_scorer import score_cover_letter
 
-    text = _read_text_file(cover_letter)
+    text = read_text_file(cover_letter)
 
     result = score_cover_letter(text)
 
@@ -2403,16 +2364,16 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
-    master_text = _read_text_file(master)
+    master_text = read_text_file(master)
     job_text = _load_job(job, job_url)
 
     resume_text = None
     if resume_output:
-        resume_text = _read_text_file(resume_output)
+        resume_text = read_text_file(resume_output)
 
     cover_text = None
     if cover_letter:
-        cover_text = _read_text_file(cover_letter)
+        cover_text = read_text_file(cover_letter)
 
     report = validate_outputs(
         master_text=master_text,
