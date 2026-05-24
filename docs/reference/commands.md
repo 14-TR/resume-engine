@@ -3,7 +3,7 @@
 
 ## Shared review dashboard schema
 
-`tailor`, `cover`, `package`, `batch`, `ats`, `diff`, `optimize`, `doctor`, `score`, `cover-score`, `fit`, `interview`, and `validate` can emit machine-readable JSON for dashboards, scripts, and CI gates. Review-oriented commands share the same top-level envelope:
+`tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate` can emit machine-readable JSON for dashboards, scripts, and CI gates using the shared top-level envelope:
 
 ```json
 {
@@ -18,6 +18,8 @@
 ```
 
 Use `summary` for dashboard cards, `artifacts` for linked files, and `data` for the command-specific body.
+
+`ats`, `doctor`, and `score` also support `--json`, but they return raw command-specific payloads rather than the shared dashboard envelope.
 
 ---
 
@@ -287,7 +289,7 @@ resume-engine score [OPTIONS] RESUME
 |------|---------|-------------|
 | `RESUME` | (required) | Resume markdown file to score |
 | `--brief` | off | Print a compact score summary |
-| `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
+| `--json` | off | Emit raw machine-readable score results |
 
 ---
 

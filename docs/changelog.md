@@ -5,6 +5,7 @@ All notable changes to Resume Engine are documented here.
 ## [Unreleased]
 
 ### Changed
+- Clarified the command reference JSON contract so raw `ats`, `doctor`, and `score` payloads are not documented as shared dashboard-envelope output.
 - Extended the quickstart with the grounded validation gate and full package handoff so first-time users see the trust review path before sending applications.
 - Aligned contributing and release-check commands with the CI Ruff lint/format scopes.
 - Clarified release documentation for maintenance/adoption work after the 0.3.1 package surface.

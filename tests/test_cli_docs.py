@@ -73,3 +73,17 @@ def test_quickstart_keeps_trust_gate_and_package_handoff_visible():
     assert "resume-engine package" in docs
     assert "--validate-report" in docs
     assert "package-summary.json" in docs
+
+
+def test_command_reference_keeps_raw_json_commands_out_of_dashboard_contract():
+    docs = (REPO_ROOT / "docs/reference/commands.md").read_text()
+    dashboard_section = docs.split("---", maxsplit=1)[0]
+    shared_contract_intro = dashboard_section.split("```json", maxsplit=1)[0]
+
+    assert "`ats`" not in shared_contract_intro
+    assert "`doctor`" not in shared_contract_intro
+    assert "`score`" not in shared_contract_intro
+    assert "`ats`, `doctor`, and `score` also support `--json`" in dashboard_section
+    assert (
+        "`resume-engine.dashboard/v1` JSON to stdout" not in _command_reference_sections()["score"]
+    )
