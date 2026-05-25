@@ -5,6 +5,7 @@ All notable changes to Resume Engine are documented here.
 ## [Unreleased]
 
 ### Changed
+- Added `resume-engine doctor` install-path diagnostics so users can see the detected CLI executable path and package version before debugging backend setup.
 - Clarified release documentation for maintenance/adoption work after the 0.3.1 package surface.
 - Kept release ownership explicit: agent work should prepare docs/PRs for review, not push tags or publish packages without TR approval.
 - Centralized CLI and batch text-source loading and made `--job` / `--job-url` mutually exclusive for single-job commands.

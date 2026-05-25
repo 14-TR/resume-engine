@@ -219,7 +219,7 @@ Valid statuses: `applied`, `screening`, `interview`, `offer`, `rejected`, `withd
 
 ### doctor
 
-Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
+Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` reports the detected `resume-engine` executable path and package version, understands which backend is configured as your default, and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
 
 ```bash
 resume-engine doctor

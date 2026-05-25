@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import List
 
 import httpx
 
+from . import __version__
 from .config import get as cfg_get
 from .llm import OLLAMA_URL
 
@@ -46,6 +48,50 @@ def _check_default_model() -> DiagnosticResult:
         "fail",
         f"Configured default model '{model}' is invalid. Use one of: anthropic, ollama, openai.",
         required=True,
+    )
+
+
+def _executable_version(executable: str) -> str | None:
+    try:
+        result = subprocess.run(
+            [executable, "--version"],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=5,
+        )
+    except Exception:
+        return None
+
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _check_cli_install() -> DiagnosticResult:
+    executable = shutil.which("resume-engine")
+    if not executable:
+        return DiagnosticResult(
+            "CLI install",
+            "warn",
+            f"resume-engine {__version__} is importable, but the resume-engine executable is not on PATH.",
+        )
+
+    executable_version = _executable_version(executable)
+    if executable_version and __version__ not in executable_version:
+        return DiagnosticResult(
+            "CLI install",
+            "warn",
+            f"Imported resume-engine {__version__}, but {executable} reports '{executable_version}'.",
+        )
+
+    detail = f"resume-engine {__version__} executable found at {executable}."
+    if executable_version:
+        detail = f"{detail} Executable reports: {executable_version}."
+    return DiagnosticResult(
+        "CLI install",
+        "pass",
+        detail,
     )
 
 
@@ -105,6 +151,7 @@ def run_diagnostics() -> List[DiagnosticResult]:
     model = cfg_get("model", "ollama")
     results = [
         _check_python(),
+        _check_cli_install(),
         _check_default_model(),
         _check_ollama(model),
         _check_api_key("openai", "OPENAI_API_KEY", model),

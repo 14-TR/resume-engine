@@ -5,7 +5,12 @@ import json
 from click.testing import CliRunner
 
 from resume_engine.cli import main
-from resume_engine.doctor import DiagnosticResult, results_to_payload, summarize_results
+from resume_engine.doctor import (
+    DiagnosticResult,
+    _check_cli_install,
+    results_to_payload,
+    summarize_results,
+)
 
 
 class TestDoctorHelpers:
@@ -31,6 +36,50 @@ class TestDoctorHelpers:
         assert payload["summary"] == {"passed": 1, "warned": 1, "failed": 1}
         assert payload["all_required_passed"] is False
         assert payload["results"][2]["required"] is True
+
+    def test_cli_install_check_reports_executable_path(self, monkeypatch):
+        monkeypatch.setattr("resume_engine.doctor.__version__", "9.9.9")
+        monkeypatch.setattr(
+            "resume_engine.doctor.shutil.which", lambda name: "/usr/bin/resume-engine"
+        )
+        monkeypatch.setattr(
+            "resume_engine.doctor._executable_version",
+            lambda executable: "resume-engine, version 9.9.9",
+        )
+
+        result = _check_cli_install()
+
+        assert result.name == "CLI install"
+        assert result.status == "pass"
+        assert "resume-engine 9.9.9 executable found at /usr/bin/resume-engine" in result.detail
+
+    def test_cli_install_check_warns_on_executable_version_mismatch(self, monkeypatch):
+        monkeypatch.setattr("resume_engine.doctor.__version__", "9.9.9")
+        monkeypatch.setattr(
+            "resume_engine.doctor.shutil.which", lambda name: "/usr/bin/resume-engine"
+        )
+        monkeypatch.setattr(
+            "resume_engine.doctor._executable_version",
+            lambda executable: "resume-engine, version 1.2.3",
+        )
+
+        result = _check_cli_install()
+
+        assert result.name == "CLI install"
+        assert result.status == "warn"
+        assert "Imported resume-engine 9.9.9" in result.detail
+        assert "/usr/bin/resume-engine reports 'resume-engine, version 1.2.3'" in result.detail
+
+    def test_cli_install_check_warns_when_executable_missing(self, monkeypatch):
+        monkeypatch.setattr("resume_engine.doctor.__version__", "9.9.9")
+        monkeypatch.setattr("resume_engine.doctor.shutil.which", lambda name: None)
+
+        result = _check_cli_install()
+
+        assert result.name == "CLI install"
+        assert result.status == "warn"
+        assert "not on PATH" in result.detail
+        assert result.required is False
 
 
 class TestDoctorCommand:
