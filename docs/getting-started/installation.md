@@ -15,6 +15,7 @@ Verify the install:
 
 ```bash
 resume-engine --version
+resume-engine doctor
 ```
 
 ## Install from Source
@@ -34,7 +35,7 @@ After installing, run the system check to confirm everything is working:
 resume-engine check
 ```
 
-This checks Ollama connectivity, pandoc availability, and any API keys you have configured. Green means go -- you are ready to tailor resumes.
+This checks the detected CLI path and version, Ollama connectivity, pandoc availability, and any API keys you have configured. Green means go -- you are ready to tailor resumes.
 
 ## LLM Backend Setup
 
