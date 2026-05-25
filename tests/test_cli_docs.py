@@ -87,3 +87,21 @@ def test_command_reference_keeps_raw_json_commands_out_of_dashboard_contract():
     assert (
         "`resume-engine.dashboard/v1` JSON to stdout" not in _command_reference_sections()["score"]
     )
+
+
+def test_public_docs_do_not_include_local_user_paths():
+    docs = [
+        *REPO_ROOT.glob("*.md"),
+        *REPO_ROOT.glob("docs/**/*.md"),
+    ]
+    leaks = {
+        str(path.relative_to(REPO_ROOT)): [
+            line_no
+            for line_no, line in enumerate(path.read_text().splitlines(), start=1)
+            if "/Users/" in line
+        ]
+        for path in docs
+    }
+    leaks = {path: lines for path, lines in leaks.items() if lines}
+
+    assert leaks == {}
