@@ -89,6 +89,33 @@ def test_command_reference_keeps_raw_json_commands_out_of_dashboard_contract():
     )
 
 
+def test_readme_keeps_json_schema_contract_current():
+    docs = (REPO_ROOT / "README.md").read_text()
+    dashboard_section = docs.split("## Review dashboard JSON schema", maxsplit=1)[1].split(
+        "## Commands", maxsplit=1
+    )[0]
+    shared_contract_intro = dashboard_section.split("```json", maxsplit=1)[0]
+
+    shared_commands = [
+        "tailor",
+        "cover",
+        "package",
+        "batch",
+        "diff",
+        "optimize",
+        "cover-score",
+        "fit",
+        "interview",
+        "validate",
+    ]
+    for command in shared_commands:
+        assert f"`{command}`" in shared_contract_intro
+
+    for command in ["ats", "doctor", "score"]:
+        assert f"`{command}`" not in shared_contract_intro
+    assert "`ats`, `doctor`, and `score` also support `--json`" in dashboard_section
+
+
 def test_public_docs_do_not_include_local_user_paths():
     docs = [
         *REPO_ROOT.glob("*.md"),

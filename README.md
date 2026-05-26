@@ -42,7 +42,7 @@ resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 
 ## Review dashboard JSON schema
 
-`tailor`, `fit`, `interview`, `validate`, and `package` now share a stable machine-readable envelope for dashboards, CI, and agent workflows:
+`tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate` share a stable machine-readable envelope for dashboards, CI, and agent workflows:
 
 ```json
 {
@@ -60,6 +60,8 @@ resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 - `summary`: headline metrics for dashboards
 - `artifacts`: related markdown/PDF/package paths
 - `data`: full command-specific payload
+
+`ats`, `doctor`, and `score` also support `--json`, but they return raw command-specific payloads instead of the shared dashboard envelope.
 
 ## Commands
 
