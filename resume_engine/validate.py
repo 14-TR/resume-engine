@@ -202,8 +202,11 @@ def _extract_companies(text: str) -> set[str]:
             continue
         if "|" in stripped:
             candidate = _clean_company_candidate(stripped.split("|", 1)[0])
-            if candidate and len(candidate) > 2 and candidate[0].isupper() and not any(
-                word in candidate.lower() for word in TITLE_WORDS
+            if (
+                candidate
+                and len(candidate) > 2
+                and candidate[0].isupper()
+                and not any(word in candidate.lower() for word in TITLE_WORDS)
             ):
                 companies.add(candidate)
         if re.search(r"\s[-\u2013\u2014]{1,2}\s", stripped):
