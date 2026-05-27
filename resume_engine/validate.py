@@ -23,7 +23,9 @@ COMMON_SECTION_WORDS = {
     "highlights",
     "resume",
     "letter",
+    "cover letter",
     "dear",
+    "dear hiring manager",
     "sincerely",
     "regards",
     "phone",
@@ -184,18 +186,41 @@ def _extract_date_ranges(text: str) -> set[str]:
     return values
 
 
+def _clean_company_candidate(value: str) -> str:
+    candidate = re.sub(r"\([^)]*\)", "", value)
+    candidate = re.split(r"\s+\|\s+", candidate, maxsplit=1)[0]
+    candidate = re.split(r"\.\s+", candidate, maxsplit=1)[0]
+    candidate = re.split(r",\s+[A-Z][A-Za-z .-]*(?:$|\s)", candidate, maxsplit=1)[0]
+    return candidate.strip(" -|,.")
+
+
 def _extract_companies(text: str) -> set[str]:
     companies = set()
     for line in text.splitlines():
-        stripped = line.strip()
+        stripped = line.strip().lstrip("#").strip()
         if not stripped:
             continue
+        if "|" in stripped:
+            candidate = _clean_company_candidate(stripped.split("|", 1)[0])
+            if (
+                candidate
+                and len(candidate) > 2
+                and candidate[0].isupper()
+                and not any(word in candidate.lower() for word in TITLE_WORDS)
+            ):
+                companies.add(candidate)
+        if re.search(r"\s[-\u2013\u2014]{1,2}\s", stripped):
+            left, right = re.split(r"\s[-\u2013\u2014]{1,2}\s", stripped, maxsplit=1)
+            if any(word in left.lower() for word in TITLE_WORDS):
+                candidate = _clean_company_candidate(right)
+                if candidate and len(candidate) > 2:
+                    companies.add(candidate)
         for pattern in [
             r"--\s*([^()|]+?)\s*(?:\(|$)",
             r"\bat\s+([A-Z][A-Za-z0-9&.,'/-]+(?:\s+[A-Z][A-Za-z0-9&.,'/-]+){0,4})",
         ]:
             for match in re.finditer(pattern, stripped):
-                candidate = match.group(1).strip(" -|,")
+                candidate = _clean_company_candidate(match.group(1))
                 if candidate and len(candidate) > 2:
                     companies.add(candidate)
     return companies
@@ -211,7 +236,9 @@ def _extract_titles(text: str) -> set[str]:
             left = stripped.split("--", 1)[0].strip()
             if any(word in left.lower() for word in TITLE_WORDS):
                 titles.add(left)
-        elif re.search(r"\b(?:as|role:?|title:?)\b", stripped, re.IGNORECASE):
+        elif len(stripped.split()) <= 8 and re.search(
+            r"\b(?:as|role:?|title:?)\b", stripped, re.IGNORECASE
+        ):
             if any(word in stripped.lower() for word in TITLE_WORDS):
                 titles.add(stripped)
     return titles
@@ -219,12 +246,16 @@ def _extract_titles(text: str) -> set[str]:
 
 def _extract_capitalized_phrases(text: str) -> set[str]:
     phrases = set()
-    for match in re.finditer(r"\b[A-Z][A-Za-z0-9&./+-]+(?:\s+[A-Z][A-Za-z0-9&./+-]+){0,3}\b", text):
+    for match in re.finditer(
+        r"\b[A-Z][A-Za-z0-9&/+:-]+(?:[ \t]+[A-Z][A-Za-z0-9&/+:-]+){0,3}\b", text
+    ):
         phrase = match.group(0).strip()
         normalized = phrase.lower()
         if normalized in COMMON_SECTION_WORDS:
             continue
         if len(phrase) <= 2:
+            continue
+        if " " not in phrase and not phrase.isupper():
             continue
         phrases.add(phrase)
     return phrases
@@ -247,6 +278,17 @@ def _line_similarity(line: str, candidates: Iterable[str]) -> float:
         if score > best:
             best = score
     return best
+
+
+def _extract_metric_tokens(text: str) -> set[str]:
+    return {
+        match.group(0).lower().replace(",", "")
+        for match in re.finditer(
+            r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))",
+            text,
+            re.IGNORECASE,
+        )
+    }
 
 
 def _issue_weight(issue: ValidationIssue) -> int:
@@ -274,6 +316,7 @@ def validate_text(
     job_tokens = _meaningful_tokens(job_text)
     grounded_tokens = master_tokens | job_tokens
     master_bullets = _extract_bullets(master_text)
+    grounded_metrics = _extract_metric_tokens(master_text) | _extract_metric_tokens(job_text)
 
     master_dates = _extract_date_ranges(master_text)
     output_dates = _extract_date_ranges(output_text)
@@ -324,7 +367,10 @@ def validate_text(
     }
     for phrase in sorted(_extract_capitalized_phrases(output_text)):
         lower = phrase.lower()
-        if lower not in allowed_phrases and lower not in COMMON_SECTION_WORDS:
+        phrase_is_grounded = lower in allowed_phrases or any(
+            lower in allowed or allowed in lower for allowed in allowed_phrases
+        )
+        if not phrase_is_grounded and lower not in COMMON_SECTION_WORDS:
             issues.append(
                 ValidationIssue(
                     severity="low",
@@ -338,12 +384,9 @@ def validate_text(
     for bullet in _extract_bullets(output_text):
         similarity = _line_similarity(bullet, master_bullets)
         novel = [tok for tok in _meaningful_tokens(bullet) if tok not in grounded_tokens]
-        has_metric = bool(
-            re.search(
-                r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))", bullet, re.IGNORECASE
-            )
-        )
-        if has_metric and novel:
+        metrics = _extract_metric_tokens(bullet)
+        unsupported_metrics = metrics - grounded_metrics
+        if unsupported_metrics and novel:
             issues.append(
                 ValidationIssue(
                     severity="high",
