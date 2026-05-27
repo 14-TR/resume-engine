@@ -376,7 +376,9 @@ resume-engine validate [OPTIONS]
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--master` | (required) | Path to master resume |
+| `--master` | — | Path to master resume |
+| `--linkedin-url` | — | LinkedIn profile URL to import as master resume |
+| `--linkedin-export` | — | LinkedIn data export ZIP or directory |
 | `--job` | — | Path to job posting text file |
 | `--job-url` | — | URL of job posting to scrape |
 | `--resume` | — | Tailored resume to validate |
@@ -384,6 +386,7 @@ resume-engine validate [OPTIONS]
 | `--output` | — | Optional markdown report path |
 | `--json` | off | Emit `resume-engine.dashboard/v1` JSON to stdout |
 
+Use exactly one resume source: `--master`, `--linkedin-url`, or `--linkedin-export`.
 Either `--resume` or `--cover-letter` is required.
 
 ---

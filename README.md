@@ -141,6 +141,7 @@ resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 resume-engine validate --master resume.md --job posting.txt --cover-letter cover-letter.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover-letter.md --output validation-report.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
+resume-engine validate --linkedin-export linkedin.zip --job posting.txt --resume tailored.md
 ```
 
 ### optimize

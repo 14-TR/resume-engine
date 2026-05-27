@@ -2330,7 +2330,11 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
 
 @main.command("validate")
-@click.option("--master", required=True, help="Path to master resume (markdown)")
+@click.option("--master", default=None, help="Path to master resume (markdown)")
+@click.option(
+    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
+)
+@click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
@@ -2339,7 +2343,17 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
 )
-def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
+def validate_cmd(
+    master,
+    linkedin_url,
+    linkedin_export,
+    job,
+    job_url,
+    resume_output,
+    cover_letter,
+    output,
+    json_output,
+):
     """Validate tailored output against the source resume and job posting.
 
     Flags likely unsupported claims, title/date/company drift, and
@@ -2364,7 +2378,7 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
-    master_text = read_text_file(master)
+    master_text = _load_master(master, linkedin_url, linkedin_export)
     job_text = _load_job(job, job_url)
 
     resume_text = None
@@ -2389,6 +2403,8 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
             "validate",
             inputs={
                 "master": master,
+                "linkedin_url": linkedin_url,
+                "linkedin_export": linkedin_export,
                 "job": job,
                 "job_url": job_url,
                 "resume": resume_output,

@@ -154,3 +154,63 @@ def test_validate_cli_json_output(tmp_path):
     assert any(
         issue["category"] == "company drift" for issue in payload["data"]["targets"][0]["issues"]
     )
+
+
+def test_validate_cli_accepts_linkedin_export_source(monkeypatch, tmp_path):
+    job = tmp_path / "job.txt"
+    tailored = tmp_path / "tailored.md"
+    report = tmp_path / "validation.md"
+    job.write_text(JOB)
+    tailored.write_text(TAILORED_OK)
+
+    monkeypatch.setattr(
+        "resume_engine.linkedin.parse_linkedin_export",
+        lambda export_path: MASTER,
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "validate",
+            "--linkedin-export",
+            "linkedin.zip",
+            "--job",
+            str(job),
+            "--resume",
+            str(tailored),
+            "--output",
+            str(report),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert report.exists()
+
+
+def test_validate_cli_rejects_multiple_master_sources(tmp_path):
+    master = tmp_path / "master.md"
+    job = tmp_path / "job.txt"
+    tailored = tmp_path / "tailored.md"
+    master.write_text(MASTER)
+    job.write_text(JOB)
+    tailored.write_text(TAILORED_OK)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        [
+            "validate",
+            "--master",
+            str(master),
+            "--linkedin-export",
+            "linkedin.zip",
+            "--job",
+            str(job),
+            "--resume",
+            str(tailored),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Use only one of --master" in result.output
