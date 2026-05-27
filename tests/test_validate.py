@@ -51,6 +51,32 @@ def test_validate_text_has_high_score_for_grounded_output():
     assert result.issues == []
 
 
+def test_validate_text_accepts_fixture_grounded_company_formats_and_metrics():
+    master = """# Alex Rivera
+
+## Experience
+### Senior Software Engineer \u2014 Databridge Inc., Denver CO (2022 - Present)
+- Reduced AWS infrastructure cost by 34% by rightsizing EC2 instances and introducing Lambda for async jobs
+"""
+    job = """Senior Python Engineer - Platform Team
+Meridian Cloud | Remote (US)
+
+Meridian Cloud needs Python engineers to improve AWS architecture and cost optimization.
+"""
+    tailored = """# Alex Rivera
+
+## Experience
+### Senior Software Engineer - Databridge Inc., Denver CO (2022 - Present)
+- Cut AWS infrastructure costs by 34% through EC2 rightsizing and Lambda async processing for Meridian Cloud platform needs
+"""
+
+    result = validate_text(master, job, tailored, label="resume")
+
+    high_risk = {issue.category for issue in result.issues if issue.severity == "high"}
+    assert "company drift" not in high_risk
+    assert "unsupported claim" not in high_risk
+
+
 def test_validate_text_flags_drift_and_unsupported_claims():
     result = validate_text(MASTER, JOB, TAILORED_BAD, label="resume")
     categories = {issue.category for issue in result.issues}
