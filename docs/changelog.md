@@ -21,8 +21,8 @@ All notable changes to Resume Engine are documented here.
 ## [0.3.1] - 2026-05-01
 
 ### Added
-- Shared `resume-engine.dashboard/v1` JSON envelope across review and automation commands.
-- Machine-readable JSON output for `tailor`, `cover`, `package`, `batch`, `ats`, `diff`, `optimize`, `doctor`, `score`, `cover-score`, `fit`, `interview`, and `validate`.
+- Shared `resume-engine.dashboard/v1` JSON envelope for `tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate`.
+- Machine-readable raw JSON output for `ats`, `doctor`, and `score`.
 - Expanded `package` output with an optional validation report and dashboard manifest.
 - `doctor` setup diagnostics for Python version, configured backend, Ollama, provider keys, and PDF tooling.
 - Grounded validation, fit assessment, interview prep, cover scoring, tracker export, and interactive initialization commands.

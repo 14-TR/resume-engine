@@ -137,9 +137,11 @@ def test_validate_cli_runs_and_writes_report(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert "trust score" in result.output.lower()
+    assert "Validation review needed: high risk" in result.output
     assert report.exists()
     content = report.read_text()
     assert "Validation Report" in content
+    assert "Validation readiness: high risk" in content
     assert "company drift" in content
 
 
@@ -176,6 +178,7 @@ def test_validate_cli_json_output(tmp_path):
     assert payload["inputs"]["job"] == str(job)
     assert payload["inputs"]["resume"] == str(tailored)
     assert payload["inputs"]["cover_letter"] is None
+    assert payload["summary"]["risk_level"] == "high"
     assert payload["data"]["targets"][0]["label"] == "resume"
     assert any(
         issue["category"] == "company drift" for issue in payload["data"]["targets"][0]["issues"]

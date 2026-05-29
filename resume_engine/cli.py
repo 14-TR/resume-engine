@@ -2395,10 +2395,9 @@ def validate_cmd(
         tailored_resume_text=resume_text,
         cover_letter_text=cover_text,
     )
+    validation_readiness = _validation_readiness(report)
 
     if json_output:
-        all_issues = [issue for target in report.targets for issue in target.issues]
-        high_severity = sum(1 for issue in all_issues if issue.severity.lower() == "high")
         payload = _dashboard_payload(
             "validate",
             inputs={
@@ -2412,11 +2411,10 @@ def validate_cmd(
             },
             summary={
                 "target_count": len(report.targets),
-                "issue_count": len(all_issues),
-                "high_severity_issue_count": high_severity,
-                "lowest_trust_score": min(
-                    (target.score for target in report.targets), default=None
-                ),
+                "issue_count": validation_readiness["issue_count"],
+                "high_severity_issue_count": validation_readiness["high_severity_issue_count"],
+                "lowest_trust_score": validation_readiness["lowest_trust_score"],
+                "risk_level": validation_readiness["risk_level"],
             },
             artifacts={
                 "markdown": output,
@@ -2427,7 +2425,6 @@ def validate_cmd(
         return
 
     md_lines = ["# Validation Report\n"]
-    has_high = False
 
     for target in report.targets:
         score_style = (
@@ -2454,8 +2451,6 @@ def validate_cmd(
         table.add_column("Evidence", width=34)
 
         for issue in target.issues:
-            if issue.severity == "high":
-                has_high = True
             sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(
                 issue.severity, "white"
             )
@@ -2474,14 +2469,25 @@ def validate_cmd(
         console.print(table)
 
     console.print("")
-    if has_high:
+    if validation_readiness["status"] == "needs_review":
         console.print(
-            "[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything."
+            "[bold yellow]Validation review needed: "
+            f"{validation_readiness['risk_level']} risk, "
+            f"{validation_readiness['issue_count']} issue(s), "
+            f"lowest trust score {validation_readiness['lowest_trust_score']}.[/bold yellow]"
+        )
+        md_lines.insert(
+            1,
+            "Validation readiness: "
+            f"{validation_readiness['risk_level']} risk, "
+            f"{validation_readiness['issue_count']} issue(s), "
+            f"lowest trust score {validation_readiness['lowest_trust_score']}.\n\n",
         )
     else:
         console.print(
             "[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence."
         )
+        md_lines.insert(1, "Validation readiness: low risk.\n\n")
 
     if output:
         with open(output, "w") as f:
