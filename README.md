@@ -262,11 +262,7 @@ import json
 from pathlib import Path
 
 report = json.loads(Path('validation.json').read_text())
-summary = report.get('summary', {})
-if summary.get('high_severity_issue_count', 0) > 0 or (
-    summary.get('lowest_trust_score') is not None
-    and summary['lowest_trust_score'] < 80
-):
+if report['summary'].get('risk_level') in {'high', 'medium'}:
     raise SystemExit('Validation gate failed: review validation.json before sending')
 print('Validation gate passed')
 PY
@@ -279,6 +275,8 @@ When `package --validate-report --json` is used, the generated
 `summary.validation_lowest_trust_score`. High-severity validation findings or
 very low trust scores mark the package as `needs_review` and print a warning
 instead of a ready-to-send message.
+The standalone `validate` command now prints the same risk classification in
+its terminal summary and markdown report so human review matches the JSON gate.
 
 ### config
 

@@ -294,6 +294,44 @@ class TestATSCommand:
         assert "python" in payload["tailored"]["newly_matched"]
 
 
+class TestJsonContractDocs:
+    def test_shared_dashboard_docs_exclude_raw_json_commands(self):
+        commands_doc = (REPO_ROOT / "docs" / "reference" / "commands.md").read_text()
+        changelog = (REPO_ROOT / "docs" / "changelog.md").read_text()
+
+        assert "`ats`, `doctor`, and `score` also support `--json`" in commands_doc
+        assert "raw command-specific payloads" in commands_doc
+        assert "| `--json` | off | Emit raw ATS analysis JSON to stdout |" in commands_doc
+        assert "Machine-readable raw JSON output for `ats`, `doctor`, and `score`" in changelog
+
+    def test_raw_json_commands_do_not_emit_dashboard_schema(self, runner, tmp_path, monkeypatch):
+        from resume_engine.doctor import DiagnosticResult
+
+        resume_file = tmp_path / "resume.md"
+        resume_file.write_text(
+            "# Jane Doe\n## Skills\nPython, Django, PostgreSQL\n"
+            "## Experience\nLed Python API projects with measurable results."
+        )
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Python developer with Django and PostgreSQL experience.")
+
+        monkeypatch.setattr(
+            "resume_engine.doctor.run_diagnostics",
+            lambda: [DiagnosticResult("Python", "pass", "Python 3.11 detected.", required=True)],
+        )
+
+        cases = [
+            ["ats", "--resume", str(resume_file), "--job", str(job_file), "--json"],
+            ["doctor", "--json"],
+            ["score", str(resume_file), "--json"],
+        ]
+        for args in cases:
+            result = runner.invoke(main, args)
+            assert result.exit_code == 0
+            payload = json.loads(result.output)
+            assert "schema" not in payload
+
+
 class TestBatchCommand:
     def test_manifest_rejects_ambiguous_file_and_url_sources(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
@@ -1355,6 +1393,7 @@ class TestValidateCommand:
         assert payload["summary"]["issue_count"] == 1
         assert payload["summary"]["high_severity_issue_count"] == 1
         assert payload["summary"]["lowest_trust_score"] == 72
+        assert payload["summary"]["risk_level"] == "high"
         assert payload["data"]["targets"][0]["label"] == "resume"
 
 
