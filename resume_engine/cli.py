@@ -425,18 +425,21 @@ def package(
     from .engine import generate_cover_letter, tailor_resume
     from .fit import assess_fit
 
+    console.print(f"[dim]Generating tailored resume with {model}...[/dim]")
     resume = tailor_resume(master_text, job_text, model=model, template=template)
     resume_md = os.path.join(outdir, "resume.md")
     with open(resume_md, "w") as f:
         f.write(resume)
     console.print("[green]Resume (markdown) written[/green]")
 
+    console.print(f"[dim]Generating cover letter with {model}...[/dim]")
     letter = generate_cover_letter(master_text, job_text, model=model, template=template)
     cover_md = os.path.join(outdir, "cover-letter.md")
     with open(cover_md, "w") as f:
         f.write(letter)
     console.print("[green]Cover letter (markdown) written[/green]")
 
+    console.print(f"[dim]Assessing package fit with {model}...[/dim]")
     fit_result = assess_fit(resume, job_text, model=model)
     fit_summary_path = os.path.join(outdir, "fit-summary.md")
     fit_lines = [
@@ -490,6 +493,7 @@ def package(
     if validate_report:
         from .validate import validate_outputs
 
+        console.print("[dim]Running grounded validation report...[/dim]")
         report = validate_outputs(
             master_text=master_text,
             job_text=job_text,
