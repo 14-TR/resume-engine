@@ -172,12 +172,6 @@ resume-engine ats [OPTIONS]
 | `--job-url` | — | URL of job posting to scrape |
 | `--tailored` | — | Tailored resume for before/after comparison |
 | `--top` | `30` | Number of keywords to extract |
-| `--json` | off | Emit automation-friendly keyword results as JSON |
-
-For automation references, the raw JSON flag contract is:
-
-| Flag | Default | Description |
-|------|---------|-------------|
 | `--json` | off | Emit raw ATS analysis JSON to stdout |
 
 **Example:**
