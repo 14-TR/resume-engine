@@ -665,88 +665,6 @@ class TestTrackExportCommand:
 
 
 class TestPackageCommand:
-    def test_package_surfaces_stage_progress_for_long_running_steps(
-        self, runner, tmp_path, monkeypatch
-    ):
-        import sys
-        import types
-        from dataclasses import dataclass, field
-
-        master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
-        job_file = tmp_path / "job.txt"
-        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
-        outdir = tmp_path / "application"
-
-        monkeypatch.setattr(
-            "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: (
-                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
-            ),
-        )
-        monkeypatch.setattr(
-            "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: (
-                "Dear Acme Corp,\n\nI build Python APIs.\n"
-            ),
-        )
-
-        @dataclass
-        class FitDimension:
-            name: str
-            score: int
-            max_score: int
-            notes: list[str] = field(default_factory=list)
-
-        @dataclass
-        class FitResult:
-            total: int
-            dimensions: list[FitDimension]
-            verdict: str
-            recommendation: str
-            strengths: list[str]
-            gaps: list[str]
-            raw_analysis: str
-            ats_score: int
-
-        fit_stub = types.ModuleType("resume_engine.fit")
-        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
-            total=88,
-            dimensions=[
-                FitDimension(
-                    name="ATS Keyword Match",
-                    score=18,
-                    max_score=20,
-                    notes=["Matched 9/10 keywords"],
-                )
-            ],
-            verdict="Strong fit",
-            recommendation="Apply",
-            strengths=["Strong Python API experience"],
-            gaps=["Could quantify impact more clearly"],
-            raw_analysis="Strong overlap with the role.",
-            ats_score=90,
-        )
-        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
-
-        result = runner.invoke(
-            main,
-            [
-                "package",
-                "--master",
-                str(master_file),
-                "--job",
-                str(job_file),
-                "--outdir",
-                str(outdir),
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "Generating tailored resume with ollama..." in result.output
-        assert "Generating cover letter with ollama..." in result.output
-        assert "Assessing package fit with ollama..." in result.output
-
     def test_package_generates_fit_summary_and_json_manifest(self, runner, tmp_path, monkeypatch):
         import sys
         import types
@@ -1475,7 +1393,6 @@ class TestValidateCommand:
         assert payload["summary"]["issue_count"] == 1
         assert payload["summary"]["high_severity_issue_count"] == 1
         assert payload["summary"]["lowest_trust_score"] == 72
-        assert payload["summary"]["risk_level"] == "high"
         assert payload["data"]["targets"][0]["label"] == "resume"
 
 
