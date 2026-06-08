@@ -42,7 +42,7 @@ resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 
 ## Review dashboard JSON schema
 
-`tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate` share a stable machine-readable envelope for dashboards, CI, and agent workflows:
+`tailor`, `cover`, `package`, `batch`, `diff`, `optimize`, `cover-score`, `fit`, `interview`, and `validate` now share a stable machine-readable envelope for dashboards, CI, and agent workflows:
 
 ```json
 {
@@ -61,7 +61,7 @@ resume-engine track add --company "Acme Corp" --role "Staff Engineer"
 - `artifacts`: related markdown/PDF/package paths
 - `data`: full command-specific payload
 
-`ats`, `doctor`, and `score` also support `--json`, but they return raw command-specific payloads instead of the shared dashboard envelope.
+`ats`, `doctor`, and `score` also support `--json`, but they emit command-specific payloads rather than the shared `resume-engine.dashboard/v1` envelope above.
 
 ## Commands
 
@@ -106,12 +106,6 @@ resume-engine package --master resume.md --job posting.txt --outdir ./app/ --for
 resume-engine package --master resume.md --job posting.txt --outdir ./application/ --validate-report --json
 ```
 
-Package output includes `resume.md`, `cover-letter.md`, and `fit-summary.md` by default.
-Add `--validate-report` for `validation-report.md`, `--json` for
-`package-summary.json`, and `--format pdf` for matching PDF copies. When
-`--format pdf --json` are used together, the manifest includes portable
-references to the generated PDF artifacts as well as the markdown files.
-
 ### score
 
 Instant resume quality score (0-100) across 5 dimensions: structure, readability, quantified achievements, keywords, and impact. No LLM required. Use `--json` for automation-friendly output.
@@ -141,7 +135,6 @@ resume-engine validate --master resume.md --job posting.txt --resume tailored.md
 resume-engine validate --master resume.md --job posting.txt --cover-letter cover-letter.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --cover-letter cover-letter.md --output validation-report.md
 resume-engine validate --master resume.md --job posting.txt --resume tailored.md --json
-resume-engine validate --linkedin-export linkedin.zip --job posting.txt --resume tailored.md
 ```
 
 ### optimize
@@ -222,7 +215,7 @@ Valid statuses: `applied`, `screening`, `interview`, `offer`, `rejected`, `withd
 
 ### doctor
 
-Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` reports the detected `resume-engine` executable path and package version, understands which backend is configured as your default, and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
+Check your local environment before tailoring, exporting PDFs, or switching providers. `doctor` understands which backend is configured as your default and highlights required versus optional setup gaps. Add `--strict` in scripts or CI to fail fast when required checks are broken, or `--json` when you want setup checks to feed automation.
 
 ```bash
 resume-engine doctor
@@ -267,16 +260,6 @@ if report['summary'].get('risk_level') in {'high', 'medium'}:
 print('Validation gate passed')
 PY
 ```
-
-When `package --validate-report --json` is used, the generated
-`package-summary.json` includes the same readiness signal in
-`summary.validation_status`, `summary.validation_risk_level`,
-`summary.validation_high_severity_issue_count`, and
-`summary.validation_lowest_trust_score`. High-severity validation findings or
-very low trust scores mark the package as `needs_review` and print a warning
-instead of a ready-to-send message.
-The standalone `validate` command now prints the same risk classification in
-its terminal summary and markdown report so human review matches the JSON gate.
 
 ### config
 

@@ -1,6 +1,12 @@
 """Core tailoring engine -- LLM-powered resume customization."""
 
-from .llm import complete
+
+def complete(prompt: str, model: str = "ollama") -> str:
+    """Proxy LLM calls without importing optional backend deps at module load."""
+    from .llm import complete as llm_complete
+
+    return llm_complete(prompt, model=model)
+
 
 _BASE_TAILOR_PROMPT = """You are an expert resume writer. Given a master resume and a job posting, create a tailored version of the resume that:
 

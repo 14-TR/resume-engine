@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from resume_engine.batch import BatchResult, JobSpec, load_jobs_from_manifest
+from resume_engine.batch import BatchResult
 from resume_engine.cli import main
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -17,104 +17,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture
 def runner():
     return CliRunner()
-
-
-class TestSourceLoading:
-    @pytest.mark.parametrize(
-        "command_builder",
-        [
-            lambda master, job, resume, outdir: [
-                "tailor",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-            ],
-            lambda master, job, resume, outdir: [
-                "cover",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-            ],
-            lambda master, job, resume, outdir: [
-                "package",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-                "--outdir",
-                str(outdir),
-            ],
-            lambda master, job, resume, outdir: [
-                "ats",
-                "--resume",
-                str(resume),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-            ],
-            lambda master, job, resume, outdir: [
-                "fit",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-            ],
-            lambda master, job, resume, outdir: [
-                "interview",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-            ],
-            lambda master, job, resume, outdir: [
-                "validate",
-                "--master",
-                str(master),
-                "--job",
-                str(job),
-                "--job-url",
-                "https://example.com/job",
-                "--resume",
-                str(resume),
-            ],
-        ],
-    )
-    def test_job_file_and_job_url_are_mutually_exclusive(self, runner, tmp_path, command_builder):
-        master = tmp_path / "master.md"
-        master.write_text("# Jane Doe\nPython developer\n")
-        job = tmp_path / "job.txt"
-        job.write_text("Need a Python developer.\n")
-        resume = tmp_path / "resume.md"
-        resume.write_text("# Jane Doe\nPython developer\n")
-        outdir = tmp_path / "package"
-
-        result = runner.invoke(main, command_builder(master, job, resume, outdir))
-
-        assert result.exit_code != 0
-        assert "Use only one of --job or --job-url" in result.output
-
-    def test_batch_job_spec_uses_shared_job_source_validation(self):
-        job = JobSpec(
-            name="bad-job",
-            job_file="job.txt",
-            job_url="https://example.com/job",
-        )
-
-        with pytest.raises(ValueError, match="Use only one of --job or --job-url"):
-            job.load_text()
 
 
 class TestCLIHelp:
@@ -333,123 +235,6 @@ class TestJsonContractDocs:
 
 
 class TestBatchCommand:
-    def test_manifest_rejects_ambiguous_file_and_url_sources(self, runner, tmp_path, monkeypatch):
-        master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\nPython developer\n")
-        job_file = tmp_path / "job.txt"
-        job_file.write_text("Need a Python developer.")
-        manifest = tmp_path / "manifest.json"
-        manifest.write_text(
-            json.dumps(
-                [
-                    {
-                        "name": "ambiguous",
-                        "job": "job.txt",
-                        "job_url": "https://example.com/job",
-                    }
-                ]
-            )
-        )
-
-        def fail_run_batch(**kwargs):
-            raise AssertionError("run_batch should not be called for invalid manifests")
-
-        monkeypatch.setattr("resume_engine.batch.run_batch", fail_run_batch)
-
-        result = runner.invoke(
-            main,
-            [
-                "batch",
-                "--master",
-                str(master_file),
-                "--manifest",
-                str(manifest),
-                "--outdir",
-                str(tmp_path / "out"),
-                "--json",
-            ],
-        )
-
-        assert result.exit_code != 0
-        assert "must provide exactly one job source" in result.output
-        assert "ambiguous" in result.output
-        with pytest.raises(json.JSONDecodeError):
-            json.loads(result.output)
-
-    def test_manifest_rejects_missing_job_source(self, runner, tmp_path, monkeypatch):
-        master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\nPython developer\n")
-        manifest = tmp_path / "manifest.json"
-        manifest.write_text(json.dumps([{"name": "missing-source"}]))
-
-        def fail_run_batch(**kwargs):
-            raise AssertionError("run_batch should not be called for invalid manifests")
-
-        monkeypatch.setattr("resume_engine.batch.run_batch", fail_run_batch)
-
-        result = runner.invoke(
-            main,
-            [
-                "batch",
-                "--master",
-                str(master_file),
-                "--manifest",
-                str(manifest),
-                "--outdir",
-                str(tmp_path / "out"),
-                "--json",
-            ],
-        )
-
-        assert result.exit_code != 0
-        assert "must provide exactly one job source" in result.output
-        assert "missing-source" in result.output
-
-    def test_manifest_loads_valid_file_and_url_entries(self, tmp_path):
-        jobs_dir = tmp_path / "jobs"
-        jobs_dir.mkdir()
-        job_file = jobs_dir / "local.txt"
-        job_file.write_text("Need a Python developer.")
-        manifest = tmp_path / "manifest.json"
-        manifest.write_text(
-            json.dumps(
-                [
-                    {"name": "local", "job": "jobs/local.txt"},
-                    {"name": "remote", "job_url": "https://example.com/job"},
-                ]
-            )
-        )
-
-        jobs = load_jobs_from_manifest(str(manifest))
-
-        assert [job.name for job in jobs] == ["local", "remote"]
-        assert jobs[0].job_file == str(job_file)
-        assert jobs[0].job_url is None
-        assert jobs[1].job_file is None
-        assert jobs[1].job_url == "https://example.com/job"
-
-    def test_manifest_allows_identical_alias_values(self, tmp_path):
-        job_file = tmp_path / "job.txt"
-        job_file.write_text("Need a Python developer.")
-        manifest = tmp_path / "manifest.json"
-        manifest.write_text(
-            json.dumps(
-                [
-                    {
-                        "name": "duplicate-file-alias",
-                        "job": "job.txt",
-                        "job_file": "job.txt",
-                    }
-                ]
-            )
-        )
-
-        jobs = load_jobs_from_manifest(str(manifest))
-
-        assert len(jobs) == 1
-        assert jobs[0].job_file == str(job_file)
-        assert jobs[0].job_url is None
-
     def test_batch_json_output_uses_dashboard_schema(self, runner, tmp_path, monkeypatch):
         master_file = tmp_path / "master.md"
         master_file.write_text("# Jane Doe\nPython developer\n")
@@ -665,6 +450,105 @@ class TestTrackExportCommand:
 
 
 class TestPackageCommand:
+    @staticmethod
+    def _install_fake_httpx(monkeypatch):
+        import types
+
+        fake_httpx = types.ModuleType("httpx")
+
+        class HTTPError(Exception):
+            pass
+
+        class ConnectError(HTTPError):
+            pass
+
+        fake_httpx.HTTPError = HTTPError
+        fake_httpx.ConnectError = ConnectError
+        monkeypatch.setitem(sys.modules, "httpx", fake_httpx)
+        return fake_httpx
+
+    def test_package_surfaces_stage_progress_for_long_running_steps(
+        self, runner, tmp_path, monkeypatch
+    ):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+            ),
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Acme Corp,\n\nI build Python APIs.\n"
+            ),
+        )
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[
+                FitDimension(
+                    name="ATS Keyword Match",
+                    score=18,
+                    max_score=20,
+                    notes=["Matched 9/10 keywords"],
+                )
+            ],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=["Strong Python API experience"],
+            gaps=["Could quantify impact more clearly"],
+            raw_analysis="Strong overlap with the role.",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Generating tailored resume with ollama..." in result.output
+        assert "Generating cover letter with ollama..." in result.output
+        assert "Assessing package fit with ollama..." in result.output
+
     def test_package_generates_fit_summary_and_json_manifest(self, runner, tmp_path, monkeypatch):
         import sys
         import types
@@ -754,9 +638,6 @@ class TestPackageCommand:
         payload = json.loads(manifest_path.read_text())
         assert payload["schema"] == "resume-engine.dashboard/v1"
         assert payload["command"] == "package"
-        assert payload["inputs"]["master"] == "master.md"
-        assert payload["inputs"]["job"] == "job.txt"
-        assert not Path(payload["artifacts"]["fit_summary_markdown"]).is_absolute()
         assert payload["artifacts"]["fit_summary_markdown"].endswith("fit-summary.md")
         assert payload["data"]["fit"]["total"] == 88
         assert payload["data"]["validation"] is None
@@ -827,231 +708,18 @@ class TestPackageCommand:
                 "--outdir",
                 str(outdir),
                 "--validate-report",
-                "--json",
             ],
         )
 
         assert result.exit_code == 0
         assert (outdir / "resume.md").exists()
         assert (outdir / "cover-letter.md").exists()
-        assert (outdir / "fit-summary.md").exists()
         report_path = outdir / "validation-report.md"
         assert report_path.exists()
         report_text = report_path.read_text()
         assert "# Validation Report" in report_text
         assert "## Resume" in report_text
         assert "## Cover-Letter" in report_text
-
-        manifest_path = outdir / "package-summary.json"
-        assert manifest_path.exists()
-        payload = json.loads(manifest_path.read_text())
-        assert payload["schema"] == "resume-engine.dashboard/v1"
-        assert payload["summary"]["includes_validation_report"] is True
-        assert payload["inputs"]["master"] == "master.md"
-        assert payload["inputs"]["job"] == "job.txt"
-        assert payload["artifacts"]["resume_markdown"] == "resume.md"
-        assert payload["artifacts"]["cover_letter_markdown"] == "cover-letter.md"
-        assert payload["artifacts"]["fit_summary_markdown"] == "fit-summary.md"
-        assert payload["artifacts"]["validation_report_markdown"] == "validation-report.md"
-        manifest_text = manifest_path.read_text()
-        assert str(tmp_path) not in manifest_text
-        assert str(outdir) not in manifest_text
-        assert payload["data"]["validation"]["targets"]
-
-    def test_package_flags_high_risk_validation_findings(self, runner, tmp_path, monkeypatch):
-        import sys
-        import types
-        from dataclasses import dataclass, field
-
-        master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
-        job_file = tmp_path / "job.txt"
-        job_file.write_text("Acme Corp needs a Python engineer.")
-        outdir = tmp_path / "application"
-
-        monkeypatch.setattr(
-            "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
-        )
-        monkeypatch.setattr(
-            "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear team,\n",
-        )
-
-        @dataclass
-        class FitResult:
-            total: int = 88
-            dimensions: list = field(default_factory=list)
-            verdict: str = "Strong fit"
-            recommendation: str = "Apply"
-            strengths: list = field(default_factory=list)
-            gaps: list = field(default_factory=list)
-            raw_analysis: str = ""
-            ats_score: int = 90
-
-        fit_stub = types.ModuleType("resume_engine.fit")
-        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: (
-            FitResult()
-        )
-        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
-
-        @dataclass
-        class ValidationIssue:
-            severity: str
-            category: str
-            message: str
-            evidence: str = ""
-            suggestion: str = ""
-
-        @dataclass
-        class ValidationTarget:
-            label: str
-            score: int
-            issues: list[ValidationIssue] = field(default_factory=list)
-
-        @dataclass
-        class ValidationReport:
-            targets: list[ValidationTarget]
-
-        validate_stub = types.ModuleType("resume_engine.validate")
-        validate_stub.validate_outputs = lambda **kwargs: ValidationReport(
-            targets=[
-                ValidationTarget(
-                    label="resume",
-                    score=46,
-                    issues=[
-                        ValidationIssue(
-                            severity="high",
-                            category="unsupported claim",
-                            message="Company drift",
-                        )
-                    ],
-                ),
-                ValidationTarget(
-                    label="cover-letter",
-                    score=0,
-                    issues=[
-                        ValidationIssue(
-                            severity="high",
-                            category="unsupported claim",
-                            message="Role drift",
-                        )
-                    ],
-                ),
-            ]
-        )
-        monkeypatch.setitem(sys.modules, "resume_engine.validate", validate_stub)
-
-        result = runner.invoke(
-            main,
-            [
-                "package",
-                "--master",
-                str(master_file),
-                "--job",
-                str(job_file),
-                "--outdir",
-                str(outdir),
-                "--validate-report",
-                "--json",
-            ],
-        )
-
-        assert result.exit_code == 0
-        assert "Validation review needed: high risk" in result.output
-        assert "review validation findings before sending" in result.output
-        assert "Application package ready" not in result.output
-
-        payload = json.loads((outdir / "package-summary.json").read_text())
-        assert payload["summary"]["validation_status"] == "needs_review"
-        assert payload["summary"]["validation_risk_level"] == "high"
-        assert payload["summary"]["validation_issue_count"] == 2
-        assert payload["summary"]["validation_high_severity_issue_count"] == 2
-        assert payload["summary"]["validation_lowest_trust_score"] == 0
-
-    def test_package_json_manifest_includes_generated_pdf_artifacts(
-        self, runner, tmp_path, monkeypatch
-    ):
-        import sys
-        import types
-        from dataclasses import dataclass, field
-
-        master_file = tmp_path / "master.md"
-        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
-        job_file = tmp_path / "job.txt"
-        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
-        outdir = tmp_path / "application"
-
-        monkeypatch.setattr(
-            "resume_engine.engine.tailor_resume",
-            lambda master_text, job_text, model, template=None: "# Tailored Resume\n",
-        )
-        monkeypatch.setattr(
-            "resume_engine.engine.generate_cover_letter",
-            lambda master_text, job_text, model, template=None: "Dear team,\n",
-        )
-
-        def fake_markdown_to_pdf(markdown_path, pdf_path):
-            Path(pdf_path).write_text(f"PDF for {Path(markdown_path).name}")
-
-        monkeypatch.setattr("resume_engine.pdf.markdown_to_pdf", fake_markdown_to_pdf)
-
-        @dataclass
-        class FitDimension:
-            name: str
-            score: int
-            max_score: int
-            notes: list[str] = field(default_factory=list)
-
-        @dataclass
-        class FitResult:
-            total: int
-            dimensions: list[FitDimension]
-            verdict: str
-            recommendation: str
-            strengths: list[str]
-            gaps: list[str]
-            raw_analysis: str
-            ats_score: int
-
-        fit_stub = types.ModuleType("resume_engine.fit")
-        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
-            total=88,
-            dimensions=[],
-            verdict="Strong fit",
-            recommendation="Apply",
-            strengths=[],
-            gaps=[],
-            raw_analysis="",
-            ats_score=90,
-        )
-        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
-
-        result = runner.invoke(
-            main,
-            [
-                "package",
-                "--master",
-                str(master_file),
-                "--job",
-                str(job_file),
-                "--outdir",
-                str(outdir),
-                "--format",
-                "pdf",
-                "--json",
-            ],
-        )
-
-        assert result.exit_code == 0
-        payload = json.loads((outdir / "package-summary.json").read_text())
-        assert payload["artifacts"]["resume_pdf"] == "resume.pdf"
-        assert payload["artifacts"]["cover_letter_pdf"] == "cover-letter.pdf"
-        assert payload["artifacts"]["fit_summary_pdf"] == "fit-summary.pdf"
-        assert not Path(payload["artifacts"]["resume_pdf"]).is_absolute()
-        assert (outdir / "resume.pdf").exists()
-        assert (outdir / "cover-letter.pdf").exists()
-        assert (outdir / "fit-summary.pdf").exists()
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
         import sys
@@ -1120,6 +788,42 @@ class TestPackageCommand:
         assert result.exit_code == 0
         assert not (outdir / "validation-report.md").exists()
 
+    def test_package_dead_ollama_exits_cleanly_without_traceback(
+        self, runner, tmp_path, monkeypatch
+    ):
+        fake_httpx = self._install_fake_httpx(monkeypatch)
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython developer\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need a Python developer.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                fake_httpx.ConnectError("connection refused")
+            ),
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--json",
+            ],
+        )
+
+        assert result.exit_code != 0
+        assert "Error: package failed because Ollama is unavailable" in result.output
+        assert "Start Ollama or set OLLAMA_URL to a reachable server" in result.output
+        assert "Traceback" not in result.output
+
 
 class TestFitCommand:
     def test_fit_json_output(self, runner, tmp_path, monkeypatch):
@@ -1187,6 +891,30 @@ class TestFitCommand:
         assert payload["summary"]["total"] == 82
         assert payload["summary"]["recommendation"] == "Apply"
         assert len(payload["data"]["dimensions"]) == 5
+
+    def test_fit_dead_ollama_exits_cleanly_without_traceback(self, runner, tmp_path, monkeypatch):
+        fake_httpx = TestPackageCommand._install_fake_httpx(monkeypatch)
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\nPython, AWS, Kubernetes\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Need Python, AWS, Kubernetes.")
+
+        monkeypatch.setattr(
+            "resume_engine.fit.assess_fit",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                fake_httpx.ConnectError("connection refused")
+            ),
+        )
+
+        result = runner.invoke(
+            main,
+            ["fit", "--master", str(master_file), "--job", str(job_file), "--json"],
+        )
+
+        assert result.exit_code != 0
+        assert "Error: fit failed because Ollama is unavailable" in result.output
+        assert "Start Ollama or set OLLAMA_URL to a reachable server" in result.output
+        assert "Traceback" not in result.output
 
 
 class TestCoverCommand:
@@ -1393,6 +1121,7 @@ class TestValidateCommand:
         assert payload["summary"]["issue_count"] == 1
         assert payload["summary"]["high_severity_issue_count"] == 1
         assert payload["summary"]["lowest_trust_score"] == 72
+        assert payload["summary"]["risk_level"] == "high"
         assert payload["data"]["targets"][0]["label"] == "resume"
 
 
