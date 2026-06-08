@@ -6,8 +6,6 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
-from .source import read_text_file
-
 console = Console()
 
 
@@ -40,42 +38,13 @@ def _print_dashboard_json(payload: dict) -> None:
     console.print_json(json.dumps(payload))
 
 
-def _validation_readiness(report) -> dict:
-    """Summarize validation risk for package and dashboard workflows."""
-    if report is None:
-        return {
-            "status": "not_run",
-            "risk_level": "unknown",
-            "issue_count": 0,
-            "high_severity_issue_count": 0,
-            "lowest_trust_score": None,
-        }
-
-    targets = getattr(report, "targets", [])
-    issues = [issue for target in targets for issue in getattr(target, "issues", [])]
-    high_severity = sum(1 for issue in issues if getattr(issue, "severity", None) == "high")
-    scores = [
-        getattr(target, "score") for target in targets if getattr(target, "score", None) is not None
-    ]
-    lowest_score = min(scores) if scores else None
-
-    if high_severity > 0 or (lowest_score is not None and lowest_score < 60):
-        status = "needs_review"
-        risk_level = "high"
-    elif issues or (lowest_score is not None and lowest_score < 80):
-        status = "needs_review"
-        risk_level = "medium"
-    else:
-        status = "ready"
-        risk_level = "low"
-
-    return {
-        "status": status,
-        "risk_level": risk_level,
-        "issue_count": len(issues),
-        "high_severity_issue_count": high_severity,
-        "lowest_trust_score": lowest_score,
-    }
+def _validation_risk_level(lowest_trust_score: int | None, high_severity_count: int, issue_count: int) -> str:
+    """Summarize grounded validation risk for automation gates."""
+    if high_severity_count > 0 or (lowest_trust_score is not None and lowest_trust_score < 65):
+        return "high"
+    if issue_count > 0 or (lowest_trust_score is not None and lowest_trust_score < 85):
+        return "medium"
+    return "low"
 
 
 def _cfg_default(key: str, fallback=None):
@@ -85,18 +54,66 @@ def _cfg_default(key: str, fallback=None):
     return cfg_get(key, fallback)
 
 
+def _backend_error_message(command: str, model_name: str, exc: Exception) -> str:
+    """Translate backend transport/runtime failures into concise CLI errors."""
+    if model_name == "ollama":
+        return (
+            f"{command} failed because Ollama is unavailable: {exc}. "
+            "Start Ollama or set OLLAMA_URL to a reachable server, then try again."
+        )
+    if model_name == "openai":
+        return (
+            f"{command} failed while calling OpenAI: {exc}. "
+            "Check OPENAI_API_KEY and outbound network access, then try again."
+        )
+    if model_name == "anthropic":
+        return (
+            f"{command} failed while calling Anthropic: {exc}. "
+            "Check ANTHROPIC_API_KEY and outbound network access, then try again."
+        )
+    return f"{command} failed while calling the configured AI backend: {exc}"
+
+
+def _invoke_with_backend_error_handling(command: str, model_name: str, fn, *args, **kwargs):
+    """Run a model-backed CLI stage and surface backend failures cleanly."""
+    try:
+        return fn(*args, **kwargs)
+    except RuntimeError as exc:
+        raise click.ClickException(_backend_error_message(command, model_name, exc)) from exc
+    except Exception as exc:
+        try:
+            import httpx
+        except Exception:  # pragma: no cover - httpx is optional at import time
+            httpx = None
+        if httpx is not None and isinstance(exc, httpx.HTTPError):
+            raise click.ClickException(_backend_error_message(command, model_name, exc)) from exc
+        raise
+
+
 def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: str | None) -> str:
     """Load master resume text from a file, LinkedIn URL, or LinkedIn export."""
-    from .source import load_master_resume
+    sources = [s for s in [master, linkedin_url, linkedin_export] if s]
+    if len(sources) == 0:
+        raise click.UsageError(
+            "Provide --master, --linkedin-url, or --linkedin-export as the resume source."
+        )
+    if len(sources) > 1:
+        raise click.UsageError("Use only one of --master, --linkedin-url, or --linkedin-export.")
 
-    return load_master_resume(master, linkedin_url, linkedin_export, status=console.print)
+    if linkedin_url:
+        from .linkedin import scrape_linkedin_profile
 
+        console.print("[dim]Fetching LinkedIn profile...[/dim]")
+        return scrape_linkedin_profile(linkedin_url)
 
-def _load_job(job: str | None, job_url: str | None) -> str:
-    """Load job posting text from one explicit source."""
-    from .source import load_job_posting
+    if linkedin_export:
+        from .linkedin import parse_linkedin_export
 
-    return load_job_posting(job, job_url)
+        console.print("[dim]Parsing LinkedIn export...[/dim]")
+        return parse_linkedin_export(linkedin_export)
+
+    with open(master) as f:  # type: ignore[arg-type]
+        return f.read()
 
 
 @click.group()
@@ -157,6 +174,9 @@ def tailor(
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- tailoring resume", style="blue"))
 
@@ -166,7 +186,13 @@ def tailor(
         console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
 
     # Load job posting
-    job_text = _load_job(job, job_url)
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     if not json_output:
         console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
@@ -184,7 +210,9 @@ def tailor(
             console.print("[dim]No gaps identified -- proceeding with tailoring.[/dim]")
 
     # Tailor
-    result = tailor_resume(master_text, job_text, model=model, template=template)
+    result = _invoke_with_backend_error_handling(
+        "tailor", model, tailor_resume, master_text, job_text, model=model, template=template
+    )
 
     # Output
     # Determine final paths
@@ -291,11 +319,21 @@ def cover(
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-    job_text = _load_job(job, job_url)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     # Interactive gap-filling
     if interactive:
@@ -309,7 +347,9 @@ def cover(
         else:
             console.print("[dim]No gaps identified -- proceeding.[/dim]")
 
-    result = generate_cover_letter(master_text, job_text, model=model, template=template)
+    result = _invoke_with_backend_error_handling(
+        "cover", model, generate_cover_letter, master_text, job_text, model=model, template=template
+    )
 
     with open(output, "w") as f:
         f.write(result)
@@ -420,27 +460,49 @@ def package(
     console.print(Panel("[bold]resume-engine[/bold] -- full application package", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-    job_text = _load_job(job, job_url)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
+
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
 
     from .engine import generate_cover_letter, tailor_resume
     from .fit import assess_fit
 
     console.print(f"[dim]Generating tailored resume with {model}...[/dim]")
-    resume = tailor_resume(master_text, job_text, model=model, template=template)
+    resume = _invoke_with_backend_error_handling(
+        "package", model, tailor_resume, master_text, job_text, model=model, template=template
+    )
     resume_md = os.path.join(outdir, "resume.md")
     with open(resume_md, "w") as f:
         f.write(resume)
     console.print("[green]Resume (markdown) written[/green]")
 
     console.print(f"[dim]Generating cover letter with {model}...[/dim]")
-    letter = generate_cover_letter(master_text, job_text, model=model, template=template)
+    letter = _invoke_with_backend_error_handling(
+        "package",
+        model,
+        generate_cover_letter,
+        master_text,
+        job_text,
+        model=model,
+        template=template,
+    )
     cover_md = os.path.join(outdir, "cover-letter.md")
     with open(cover_md, "w") as f:
         f.write(letter)
     console.print("[green]Cover letter (markdown) written[/green]")
 
     console.print(f"[dim]Assessing package fit with {model}...[/dim]")
-    fit_result = assess_fit(resume, job_text, model=model)
+    fit_result = _invoke_with_backend_error_handling(
+        "package", model, assess_fit, resume, job_text, model=model
+    )
     fit_summary_path = os.path.join(outdir, "fit-summary.md")
     fit_lines = [
         "# Fit Summary\n",
@@ -469,27 +531,20 @@ def package(
         f.writelines(fit_lines)
     console.print(f"[green]Fit summary written to {fit_summary_path}[/green]")
 
-    pdf_paths = {}
     if fmt == "pdf":
         from .pdf import markdown_to_pdf, md_path_to_pdf_path
 
-        pdf_paths = {
-            "resume_pdf": md_path_to_pdf_path(resume_md),
-            "cover_letter_pdf": md_path_to_pdf_path(cover_md),
-            "fit_summary_pdf": md_path_to_pdf_path(fit_summary_path),
-        }
         try:
             console.print("[dim]Converting to PDF via pandoc...[/dim]")
-            markdown_to_pdf(resume_md, pdf_paths["resume_pdf"])
-            markdown_to_pdf(cover_md, pdf_paths["cover_letter_pdf"])
-            markdown_to_pdf(fit_summary_path, pdf_paths["fit_summary_pdf"])
+            markdown_to_pdf(resume_md, md_path_to_pdf_path(resume_md))
+            markdown_to_pdf(cover_md, md_path_to_pdf_path(cover_md))
+            markdown_to_pdf(fit_summary_path, md_path_to_pdf_path(fit_summary_path))
             console.print("[green]PDFs generated[/green]")
         except RuntimeError as e:
             console.print(f"[yellow]PDF conversion failed: {e}[/yellow]")
 
     report = None
     validation_path = None
-    validation_readiness = _validation_readiness(None)
     if validate_report:
         from .validate import validate_outputs
 
@@ -521,46 +576,16 @@ def package(
         with open(validation_path, "w") as f:
             f.writelines(md_lines)
         console.print(f"[green]Validation report written to {validation_path}[/green]")
-        validation_readiness = _validation_readiness(report)
-
-        if validation_readiness["status"] != "ready":
-            console.print(
-                "[bold yellow]Validation review needed: "
-                f"{validation_readiness['risk_level']} risk, "
-                f"{validation_readiness['high_severity_issue_count']} high-severity issues, "
-                f"lowest trust score {validation_readiness['lowest_trust_score']}.[/bold yellow]"
-            )
 
     if json_output:
         manifest_path = os.path.join(outdir, "package-summary.json")
-
-        def input_ref(path: str | None) -> str | None:
-            if not path:
-                return path
-            return os.path.basename(path) if os.path.isabs(path) else path
-
-        def artifact_ref(path: str | None) -> str | None:
-            if not path:
-                return path
-            return os.path.relpath(path, outdir)
-
-        artifacts = {
-            "resume_markdown": artifact_ref(resume_md),
-            "cover_letter_markdown": artifact_ref(cover_md),
-            "fit_summary_markdown": artifact_ref(fit_summary_path),
-            "validation_report_markdown": artifact_ref(validation_path),
-        }
-        for key, path in pdf_paths.items():
-            if os.path.exists(path):
-                artifacts[key] = artifact_ref(path)
-
         payload = _dashboard_payload(
             "package",
             inputs={
-                "master": input_ref(master),
+                "master": master,
                 "linkedin_url": linkedin_url,
-                "linkedin_export": input_ref(linkedin_export),
-                "job": input_ref(job),
+                "linkedin_export": linkedin_export,
+                "job": job,
                 "job_url": job_url,
                 "model": model,
                 "format": fmt,
@@ -572,15 +597,13 @@ def package(
                 "fit_verdict": fit_result.verdict,
                 "fit_recommendation": fit_result.recommendation,
                 "includes_validation_report": report is not None,
-                "validation_status": validation_readiness["status"],
-                "validation_risk_level": validation_readiness["risk_level"],
-                "validation_issue_count": validation_readiness["issue_count"],
-                "validation_high_severity_issue_count": validation_readiness[
-                    "high_severity_issue_count"
-                ],
-                "validation_lowest_trust_score": validation_readiness["lowest_trust_score"],
             },
-            artifacts=artifacts,
+            artifacts={
+                "resume_markdown": resume_md,
+                "cover_letter_markdown": cover_md,
+                "fit_summary_markdown": fit_summary_path,
+                "validation_report_markdown": validation_path,
+            },
             data={
                 "fit": asdict(fit_result),
                 "validation": asdict(report) if report else None,
@@ -590,13 +613,7 @@ def package(
             json.dump(payload, f, indent=2)
         console.print(f"[green]Package manifest written to {manifest_path}[/green]")
 
-    if validation_readiness["status"] == "needs_review":
-        console.print(
-            f"\n[bold yellow]Application package generated in {outdir}/; "
-            "review validation findings before sending.[/bold yellow]"
-        )
-    else:
-        console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
+    console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
 
 @main.command()
@@ -616,11 +633,22 @@ def ats(resume, job, job_url, tailored, top, json_output):
 
     from .ats import analyze
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
-    resume_text = read_text_file(resume)
-    job_text = _load_job(job, job_url)
+    with open(resume) as f:
+        resume_text = f.read()
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     result = analyze(resume_text, job_text, top_n=top)
     score = result["score"]
@@ -633,7 +661,8 @@ def ats(resume, job, job_url, tailored, top, json_output):
     }
 
     if tailored:
-        tailored_text = read_text_file(tailored)
+        with open(tailored) as f:
+            tailored_text = f.read()
 
         tailored_result = analyze(tailored_text, job_text, top_n=top)
         tailored_score = tailored_result["score"]
@@ -766,7 +795,8 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
-    master_text = read_text_file(master)
+    with open(master) as f:
+        master_text = f.read()
     if not json_output:
         console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
@@ -775,10 +805,7 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
         if not json_output:
             console.print(f"[dim]Found {len(jobs)} job(s) in {jobs_dir}[/dim]")
     else:
-        try:
-            jobs = load_jobs_from_manifest(manifest)
-        except ValueError as exc:
-            raise click.UsageError(str(exc)) from exc
+        jobs = load_jobs_from_manifest(manifest)
         if not json_output:
             console.print(f"[dim]Loaded {len(jobs)} job(s) from manifest[/dim]")
 
@@ -881,14 +908,23 @@ def import_resume(text_file, output, model, from_stdin):
       # From stdin (paste directly)
       pbpaste | resume-engine import --stdin --output master-resume.md --model openai
     """
+    import sys
+
     from .importer import text_to_master_resume
-    from .source import load_raw_resume_text
+
+    if not text_file and not from_stdin:
+        raise click.UsageError("Provide --text <file> or --stdin to read from stdin")
+    if text_file and from_stdin:
+        raise click.UsageError("Use --text OR --stdin, not both")
 
     console.print(Panel("[bold]resume-engine[/bold] -- importing resume", style="blue"))
 
     if from_stdin:
         console.print("[dim]Reading from stdin...[/dim]")
-    raw_text = load_raw_resume_text(text_file, from_stdin)
+        raw_text = sys.stdin.read()
+    else:
+        with open(text_file) as f:
+            raw_text = f.read()
 
     console.print(f"[dim]Input: {len(raw_text)} chars -- converting to master resume...[/dim]")
 
@@ -1068,8 +1104,10 @@ def diff_cmd(original, tailored, show_unified, show_sections, json_output):
 
     from .differ import compute_diff
 
-    orig_text = read_text_file(original)
-    tail_text = read_text_file(tailored)
+    with open(original) as f:
+        orig_text = f.read()
+    with open(tailored) as f:
+        tail_text = f.read()
 
     result = compute_diff(orig_text, tail_text)
 
@@ -1331,7 +1369,8 @@ def score_cmd(resume, brief, json_output):
 
     from .scorer import score_resume
 
-    text = read_text_file(resume)
+    with open(resume) as f:
+        text = f.read()
 
     result = score_resume(text)
 
@@ -1455,7 +1494,8 @@ def optimize(resume, output, model, fmt, show_explain, show_diff, json_output):
 
     from .optimizer import explain_changes, optimize_resume
 
-    original_text = read_text_file(resume)
+    with open(resume) as f:
+        original_text = f.read()
 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- optimize resume", style="blue"))
@@ -1647,11 +1687,21 @@ def interview(
 
     from .interview import generate_interview_prep
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-    job_text = _load_job(job, job_url)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     if not json_output:
         console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
@@ -1790,7 +1840,8 @@ def cover_score_cmd(cover_letter, brief, json_output):
 
     from .cover_scorer import score_cover_letter
 
-    text = read_text_file(cover_letter)
+    with open(cover_letter) as f:
+        text = f.read()
 
     result = score_cover_letter(text)
 
@@ -2190,16 +2241,28 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
     from .fit import assess_fit
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
+
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
-    job_text = _load_job(job, job_url)
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    elif job_url:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     if not json_output:
         console.print(f"[dim]Running fit analysis with {model}...[/dim]")
 
-    result = assess_fit(master_text, job_text, model=model)
+    result = _invoke_with_backend_error_handling(
+        "fit", model, assess_fit, master_text, job_text, model=model
+    )
 
     if json_output:
         payload = _dashboard_payload(
@@ -2334,11 +2397,7 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
 
 @main.command("validate")
-@click.option("--master", default=None, help="Path to master resume (markdown)")
-@click.option(
-    "--linkedin-url", default=None, help="LinkedIn profile URL to import as master resume"
-)
-@click.option("--linkedin-export", default=None, help="LinkedIn data export ZIP or directory")
+@click.option("--master", required=True, help="Path to master resume (markdown)")
 @click.option("--job", default=None, help="Path to job posting text file")
 @click.option("--job-url", default=None, help="URL of job posting to scrape")
 @click.option("--resume", "resume_output", default=None, help="Path to tailored resume output")
@@ -2347,17 +2406,7 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 @click.option(
     "--json", "json_output", is_flag=True, default=False, help="Output machine-readable JSON"
 )
-def validate_cmd(
-    master,
-    linkedin_url,
-    linkedin_export,
-    job,
-    job_url,
-    resume_output,
-    cover_letter,
-    output,
-    json_output,
-):
+def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json_output):
     """Validate tailored output against the source resume and job posting.
 
     Flags likely unsupported claims, title/date/company drift, and
@@ -2376,22 +2425,34 @@ def validate_cmd(
 
     from .validate import validate_outputs
 
+    if not job and not job_url:
+        raise click.UsageError("Provide either --job or --job-url")
     if not resume_output and not cover_letter:
         raise click.UsageError("Provide --resume, --cover-letter, or both")
 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
-    master_text = _load_master(master, linkedin_url, linkedin_export)
-    job_text = _load_job(job, job_url)
+    with open(master) as f:
+        master_text = f.read()
+
+    if job:
+        with open(job) as f:
+            job_text = f.read()
+    else:
+        from .scraper import scrape_job_posting
+
+        job_text = scrape_job_posting(job_url)
 
     resume_text = None
     if resume_output:
-        resume_text = read_text_file(resume_output)
+        with open(resume_output) as f:
+            resume_text = f.read()
 
     cover_text = None
     if cover_letter:
-        cover_text = read_text_file(cover_letter)
+        with open(cover_letter) as f:
+            cover_text = f.read()
 
     report = validate_outputs(
         master_text=master_text,
@@ -2399,15 +2460,15 @@ def validate_cmd(
         tailored_resume_text=resume_text,
         cover_letter_text=cover_text,
     )
-    validation_readiness = _validation_readiness(report)
 
     if json_output:
+        all_issues = [issue for target in report.targets for issue in target.issues]
+        high_severity = sum(1 for issue in all_issues if issue.severity.lower() == "high")
+        lowest_trust_score = min((target.score for target in report.targets), default=None)
         payload = _dashboard_payload(
             "validate",
             inputs={
                 "master": master,
-                "linkedin_url": linkedin_url,
-                "linkedin_export": linkedin_export,
                 "job": job,
                 "job_url": job_url,
                 "resume": resume_output,
@@ -2415,10 +2476,12 @@ def validate_cmd(
             },
             summary={
                 "target_count": len(report.targets),
-                "issue_count": validation_readiness["issue_count"],
-                "high_severity_issue_count": validation_readiness["high_severity_issue_count"],
-                "lowest_trust_score": validation_readiness["lowest_trust_score"],
-                "risk_level": validation_readiness["risk_level"],
+                "issue_count": len(all_issues),
+                "high_severity_issue_count": high_severity,
+                "lowest_trust_score": lowest_trust_score,
+                "risk_level": _validation_risk_level(
+                    lowest_trust_score, high_severity, len(all_issues)
+                ),
             },
             artifacts={
                 "markdown": output,
@@ -2429,6 +2492,7 @@ def validate_cmd(
         return
 
     md_lines = ["# Validation Report\n"]
+    has_high = False
 
     for target in report.targets:
         score_style = (
@@ -2455,6 +2519,8 @@ def validate_cmd(
         table.add_column("Evidence", width=34)
 
         for issue in target.issues:
+            if issue.severity == "high":
+                has_high = True
             sev_style = {"high": "red", "medium": "yellow", "low": "cyan"}.get(
                 issue.severity, "white"
             )
@@ -2473,25 +2539,14 @@ def validate_cmd(
         console.print(table)
 
     console.print("")
-    if validation_readiness["status"] == "needs_review":
+    if has_high:
         console.print(
-            "[bold yellow]Validation review needed: "
-            f"{validation_readiness['risk_level']} risk, "
-            f"{validation_readiness['issue_count']} issue(s), "
-            f"lowest trust score {validation_readiness['lowest_trust_score']}.[/bold yellow]"
-        )
-        md_lines.insert(
-            1,
-            "Validation readiness: "
-            f"{validation_readiness['risk_level']} risk, "
-            f"{validation_readiness['issue_count']} issue(s), "
-            f"lowest trust score {validation_readiness['lowest_trust_score']}.\n\n",
+            "[bold red]High-risk issues found.[/bold red] Review the flagged lines before sending anything."
         )
     else:
         console.print(
             "[bold green]Validation complete.[/bold green] Review any warnings, then send with confidence."
         )
-        md_lines.insert(1, "Validation readiness: low risk.\n\n")
 
     if output:
         with open(output, "w") as f:

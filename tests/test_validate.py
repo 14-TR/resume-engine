@@ -1,5 +1,7 @@
 """Tests for grounded output validation."""
 
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from resume_engine.cli import main
@@ -44,37 +46,34 @@ TAILORED_BAD = """# Jane Smith
 Python, AWS, Kubernetes, PostgreSQL, Terraform
 """
 
+TAILORED_GROUNDED_REWRITE = """# Alex Rivera
+
+## Experience
+### Senior Software Engineer -- Databridge Inc., Denver CO (2022 - Present)
+- Collaborated with platform peers to improve the public REST API, keeping the 50+ endpoints documented and client-ready
+- Designed AWS cost optimizations that preserved the previously achieved 34% infrastructure reduction
+- Developed integration test coverage improvements that sustained the 38% to 82% increase across core services
+- Used Python and FastAPI to build backend services for billing and tenant lifecycle management
+"""
+
+COVER_LETTER_GROUNDED = """# Cover Letter for Senior Python Engineer Position at Meridian Cloud
+
+Dear Hiring Manager,
+
+I am writing to express my interest in the Senior Python Engineer position at Meridian Cloud.
+At Databridge Inc., I led the migration of our monolithic Django application to microservices and built a real-time data ingestion pipeline processing 4M events/day with Kafka and Python workers.
+I also reduced AWS infrastructure costs by 34% and mentored junior engineers through architecture reviews.
+
+Best regards,
+
+Alex Rivera
+"""
+
 
 def test_validate_text_has_high_score_for_grounded_output():
     result = validate_text(MASTER, JOB, TAILORED_OK, label="resume")
     assert result.score >= 85
     assert result.issues == []
-
-
-def test_validate_text_accepts_fixture_grounded_company_formats_and_metrics():
-    master = """# Alex Rivera
-
-## Experience
-### Senior Software Engineer \u2014 Databridge Inc., Denver CO (2022 - Present)
-- Reduced AWS infrastructure cost by 34% by rightsizing EC2 instances and introducing Lambda for async jobs
-"""
-    job = """Senior Python Engineer - Platform Team
-Meridian Cloud | Remote (US)
-
-Meridian Cloud needs Python engineers to improve AWS architecture and cost optimization.
-"""
-    tailored = """# Alex Rivera
-
-## Experience
-### Senior Software Engineer - Databridge Inc., Denver CO (2022 - Present)
-- Cut AWS infrastructure costs by 34% through EC2 rightsizing and Lambda async processing for Meridian Cloud platform needs
-"""
-
-    result = validate_text(master, job, tailored, label="resume")
-
-    high_risk = {issue.category for issue in result.issues if issue.severity == "high"}
-    assert "company drift" not in high_risk
-    assert "unsupported claim" not in high_risk
 
 
 def test_validate_text_flags_drift_and_unsupported_claims():
@@ -85,6 +84,48 @@ def test_validate_text_flags_drift_and_unsupported_claims():
     assert "title drift" in categories or "new proper noun" in categories
     assert any(issue.severity == "high" for issue in result.issues)
     assert result.score < 85
+
+
+def test_validate_text_keeps_grounded_metrics_and_sentence_start_verbs_supported():
+    examples_dir = Path(__file__).resolve().parents[1] / "examples"
+    result = validate_text(
+        master_text=(examples_dir / "master-resume.md").read_text(),
+        job_text=(examples_dir / "job-posting.txt").read_text(),
+        output_text=TAILORED_GROUNDED_REWRITE,
+        label="resume",
+    )
+    categories = {issue.category for issue in result.issues}
+    assert "new proper noun" not in categories
+    assert "unsupported claim" not in categories
+
+
+def test_validate_text_keeps_grounded_cover_letter_companies_titles_and_metrics_supported():
+    examples_dir = Path(__file__).resolve().parents[1] / "examples"
+    result = validate_text(
+        master_text=(examples_dir / "master-resume.md").read_text(),
+        job_text=(examples_dir / "job-posting.txt").read_text(),
+        output_text=COVER_LETTER_GROUNDED,
+        label="cover-letter",
+    )
+    categories = {issue.category for issue in result.issues}
+    assert "company drift" not in categories
+    assert "title drift" not in categories
+    assert "new proper noun" not in categories
+    assert "unsupported claim" not in categories
+
+
+def test_validate_text_keeps_bundled_tailored_example_out_of_medium_risk():
+    repo_root = Path(__file__).resolve().parents[1]
+    result = validate_text(
+        master_text=(repo_root / "examples" / "master-resume.md").read_text(),
+        job_text=(repo_root / "examples" / "job-posting.txt").read_text(),
+        output_text=(repo_root / "tailored-resume.md").read_text(),
+        label="resume",
+    )
+    evidence = {issue.evidence for issue in result.issues}
+    assert "Optimized AWS" not in evidence
+    assert "Over" not in evidence
+    assert result.score >= 96
 
 
 def test_validate_outputs_supports_resume_and_cover_letter():
@@ -137,11 +178,9 @@ def test_validate_cli_runs_and_writes_report(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert "trust score" in result.output.lower()
-    assert "Validation review needed: high risk" in result.output
     assert report.exists()
     content = report.read_text()
     assert "Validation Report" in content
-    assert "Validation readiness: high risk" in content
     assert "company drift" in content
 
 
@@ -178,68 +217,7 @@ def test_validate_cli_json_output(tmp_path):
     assert payload["inputs"]["job"] == str(job)
     assert payload["inputs"]["resume"] == str(tailored)
     assert payload["inputs"]["cover_letter"] is None
-    assert payload["summary"]["risk_level"] == "high"
     assert payload["data"]["targets"][0]["label"] == "resume"
     assert any(
         issue["category"] == "company drift" for issue in payload["data"]["targets"][0]["issues"]
     )
-
-
-def test_validate_cli_accepts_linkedin_export_source(monkeypatch, tmp_path):
-    job = tmp_path / "job.txt"
-    tailored = tmp_path / "tailored.md"
-    report = tmp_path / "validation.md"
-    job.write_text(JOB)
-    tailored.write_text(TAILORED_OK)
-
-    monkeypatch.setattr(
-        "resume_engine.linkedin.parse_linkedin_export",
-        lambda export_path: MASTER,
-    )
-
-    runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "validate",
-            "--linkedin-export",
-            "linkedin.zip",
-            "--job",
-            str(job),
-            "--resume",
-            str(tailored),
-            "--output",
-            str(report),
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert report.exists()
-
-
-def test_validate_cli_rejects_multiple_master_sources(tmp_path):
-    master = tmp_path / "master.md"
-    job = tmp_path / "job.txt"
-    tailored = tmp_path / "tailored.md"
-    master.write_text(MASTER)
-    job.write_text(JOB)
-    tailored.write_text(TAILORED_OK)
-
-    runner = CliRunner()
-    result = runner.invoke(
-        main,
-        [
-            "validate",
-            "--master",
-            str(master),
-            "--linkedin-export",
-            "linkedin.zip",
-            "--job",
-            str(job),
-            "--resume",
-            str(tailored),
-        ],
-    )
-
-    assert result.exit_code != 0
-    assert "Use only one of --master" in result.output

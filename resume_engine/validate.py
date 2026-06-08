@@ -23,9 +23,7 @@ COMMON_SECTION_WORDS = {
     "highlights",
     "resume",
     "letter",
-    "cover letter",
     "dear",
-    "dear hiring manager",
     "sincerely",
     "regards",
     "phone",
@@ -36,6 +34,13 @@ COMMON_SECTION_WORDS = {
     "remote",
     "hybrid",
     "present",
+    "manager",
+    "hiring manager",
+    "cover letter",
+    "dear hiring manager",
+    "expertise",
+    "seeking",
+    "api",
 }
 STOPWORDS = {
     "a",
@@ -129,6 +134,41 @@ SKILL_PHRASES = [
     "scrum",
     "ci/cd",
 ]
+ACTION_VERBS = {
+    "achieved",
+    "automated",
+    "built",
+    "collaborated",
+    "created",
+    "debugged",
+    "delivered",
+    "designed",
+    "developed",
+    "drove",
+    "improved",
+    "increased",
+    "launched",
+    "led",
+    "managed",
+    "mentored",
+    "owned",
+    "optimized",
+    "reduced",
+    "shipped",
+    "supported",
+    "used",
+    "wrote",
+}
+DISCOURSE_WORDS = {
+    "additionally",
+    "best",
+    "over",
+    "please",
+    "skilled",
+    "thank",
+    "understanding",
+    "with",
+}
 
 
 @dataclass
@@ -186,43 +226,32 @@ def _extract_date_ranges(text: str) -> set[str]:
     return values
 
 
-def _clean_company_candidate(value: str) -> str:
-    candidate = re.sub(r"\([^)]*\)", "", value)
-    candidate = re.split(r"\s+\|\s+", candidate, maxsplit=1)[0]
-    candidate = re.split(r"\.\s+", candidate, maxsplit=1)[0]
-    candidate = re.split(r",\s+[A-Z][A-Za-z .-]*(?:$|\s)", candidate, maxsplit=1)[0]
-    return candidate.strip(" -|,.")
-
-
 def _extract_companies(text: str) -> set[str]:
     companies = set()
     for line in text.splitlines():
-        stripped = line.strip().lstrip("#").strip()
+        stripped = line.strip()
         if not stripped:
             continue
-        if "|" in stripped:
-            candidate = _clean_company_candidate(stripped.split("|", 1)[0])
-            if (
-                candidate
-                and len(candidate) > 2
-                and candidate[0].isupper()
-                and not any(word in candidate.lower() for word in TITLE_WORDS)
+        split_match = re.split(r"\s+(?:--|—|–)\s+", stripped, maxsplit=1)
+        if len(split_match) > 1:
+            left = split_match[0].strip()
+            if any(word in left.lower() for word in TITLE_WORDS) or re.search(
+                r"\((?:19|20)\d{2}", stripped
             ):
+                candidate = split_match[1].split("(", 1)[0].split(",", 1)[0].strip(" -|,.")
+                if candidate and len(candidate) > 2:
+                    companies.add(candidate)
+        if "|" in stripped:
+            candidate = stripped.split("|", 1)[0].strip(" -|,.")
+            if re.fullmatch(r"[A-Z][A-Za-z0-9&.'/-]+(?:\s+[A-Z][A-Za-z0-9&.'/-]+){0,4}", candidate):
                 companies.add(candidate)
-        if re.search(r"\s[-\u2013\u2014]{1,2}\s", stripped):
-            left, right = re.split(r"\s[-\u2013\u2014]{1,2}\s", stripped, maxsplit=1)
-            if any(word in left.lower() for word in TITLE_WORDS):
-                candidate = _clean_company_candidate(right)
-                if candidate and len(candidate) > 2:
-                    companies.add(candidate)
-        for pattern in [
-            r"--\s*([^()|]+?)\s*(?:\(|$)",
-            r"\bat\s+([A-Z][A-Za-z0-9&.,'/-]+(?:\s+[A-Z][A-Za-z0-9&.,'/-]+){0,4})",
-        ]:
-            for match in re.finditer(pattern, stripped):
-                candidate = _clean_company_candidate(match.group(1))
-                if candidate and len(candidate) > 2:
-                    companies.add(candidate)
+        for match in re.finditer(
+            r"\bat\s+([A-Z][A-Za-z0-9&.'/-]+(?:\s+[A-Z][A-Za-z0-9&.'/-]+){0,4})",
+            stripped,
+        ):
+            candidate = match.group(1).strip(" -|,.")
+            if candidate and len(candidate) > 2:
+                companies.add(candidate)
     return companies
 
 
@@ -232,30 +261,32 @@ def _extract_titles(text: str) -> set[str]:
         stripped = line.strip().lstrip("#").strip()
         if not stripped:
             continue
-        if "--" in stripped:
-            left = stripped.split("--", 1)[0].strip()
+        split_match = re.split(r"\s+(?:--|—|–)\s+", stripped, maxsplit=1)
+        if len(split_match) > 1:
+            left = split_match[0].strip()
             if any(word in left.lower() for word in TITLE_WORDS):
                 titles.add(left)
-        elif len(stripped.split()) <= 8 and re.search(
-            r"\b(?:as|role:?|title:?)\b", stripped, re.IGNORECASE
-        ):
-            if any(word in stripped.lower() for word in TITLE_WORDS):
-                titles.add(stripped)
+        for pattern in [
+            r"\b(?:as|role:?|title:?|position)\s+(?:a|an|the)?\s*([A-Z][A-Za-z0-9/&,'-]+(?:\s+[A-Z][A-Za-z0-9/&,'-]+){0,5})",
+            r"\bjoin\s+(?:your|the)\s+([A-Z][A-Za-z0-9/&,'-]+(?:\s+[A-Z][A-Za-z0-9/&,'-]+){0,5})",
+        ]:
+            for match in re.finditer(pattern, stripped):
+                candidate = match.group(1).strip(" ,.")
+                if any(word in candidate.lower() for word in TITLE_WORDS):
+                    titles.add(candidate)
     return titles
 
 
 def _extract_capitalized_phrases(text: str) -> set[str]:
     phrases = set()
-    for match in re.finditer(
-        r"\b[A-Z][A-Za-z0-9&/+:-]+(?:[ \t]+[A-Z][A-Za-z0-9&/+:-]+){0,3}\b", text
-    ):
+    for match in re.finditer(r"\b[A-Z][A-Za-z0-9&./+-]+(?: [A-Z][A-Za-z0-9&./+-]+){0,3}\b", text):
         phrase = match.group(0).strip()
+        if ". " in phrase:
+            continue
         normalized = phrase.lower()
         if normalized in COMMON_SECTION_WORDS:
             continue
         if len(phrase) <= 2:
-            continue
-        if " " not in phrase and not phrase.isupper():
             continue
         phrases.add(phrase)
     return phrases
@@ -270,6 +301,49 @@ def _extract_skill_mentions(text: str) -> set[str]:
     return found
 
 
+def _extract_metrics(text: str) -> set[str]:
+    metrics = set()
+    patterns = [
+        r"\b\d+(?:\.\d+)?%\b",
+        r"\b\d+\+\s+[A-Za-z][A-Za-z0-9/-]*\b",
+        r"\b\d+(?:\.\d+)?[MK]?\s+[A-Za-z][A-Za-z0-9/-]*/day\b",
+        r"\b\d+(?:\.\d+)?\s+to\s+\d+(?:\.\d+)?%\b",
+    ]
+    for pattern in patterns:
+        metrics.update(match.group(0).strip() for match in re.finditer(pattern, text, re.IGNORECASE))
+    return metrics
+
+
+def _normalize_entity(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _looks_like_grounded_sentence_start_phrase(phrase: str, allowed_phrases: set[str]) -> bool:
+    parts = phrase.split()
+    if not parts:
+        return False
+    first = parts[0].lower()
+    if first not in ACTION_VERBS:
+        return False
+    if len(parts) == 1:
+        return True
+    trimmed = " ".join(parts[1:]).lower()
+    return trimmed in allowed_phrases or trimmed in {skill.lower() for skill in SKILL_PHRASES}
+
+
+def _is_generic_capitalized_phrase(phrase: str) -> bool:
+    normalized = phrase.lower().strip()
+    return normalized in DISCOURSE_WORDS or normalized in COMMON_SECTION_WORDS
+
+
+def _entity_matches(candidate: str, allowed: set[str]) -> bool:
+    normalized = _normalize_entity(candidate)
+    for allowed_value in allowed:
+        if normalized == allowed_value or normalized in allowed_value or allowed_value in normalized:
+            return True
+    return False
+
+
 def _line_similarity(line: str, candidates: Iterable[str]) -> float:
     best = 0.0
     normalized = line.strip().lower()
@@ -278,17 +352,6 @@ def _line_similarity(line: str, candidates: Iterable[str]) -> float:
         if score > best:
             best = score
     return best
-
-
-def _extract_metric_tokens(text: str) -> set[str]:
-    return {
-        match.group(0).lower().replace(",", "")
-        for match in re.finditer(
-            r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))",
-            text,
-            re.IGNORECASE,
-        )
-    }
 
 
 def _issue_weight(issue: ValidationIssue) -> int:
@@ -315,8 +378,8 @@ def validate_text(
     master_tokens = _meaningful_tokens(master_text)
     job_tokens = _meaningful_tokens(job_text)
     grounded_tokens = master_tokens | job_tokens
+    grounded_metrics = _extract_metrics(master_text) | _extract_metrics(job_text)
     master_bullets = _extract_bullets(master_text)
-    grounded_metrics = _extract_metric_tokens(master_text) | _extract_metric_tokens(job_text)
 
     master_dates = _extract_date_ranges(master_text)
     output_dates = _extract_date_ranges(output_text)
@@ -332,11 +395,11 @@ def validate_text(
         )
 
     master_companies = _extract_companies(master_text)
-    allowed_companies = {c.lower() for c in master_companies} | {
-        c.lower() for c in _extract_companies(job_text)
+    allowed_companies = {_normalize_entity(c) for c in master_companies} | {
+        _normalize_entity(c) for c in _extract_companies(job_text)
     }
     for company in sorted(_extract_companies(output_text)):
-        if company.lower() not in allowed_companies:
+        if not _entity_matches(company, allowed_companies):
             issues.append(
                 ValidationIssue(
                     severity="high",
@@ -349,9 +412,9 @@ def validate_text(
 
     master_titles = _extract_titles(master_text)
     job_titles = _extract_titles(job_text)
-    allowed_titles = {t.lower() for t in master_titles | job_titles}
+    allowed_titles = {_normalize_entity(t) for t in master_titles | job_titles}
     for title in sorted(_extract_titles(output_text)):
-        if title.lower() not in allowed_titles:
+        if not _entity_matches(title, allowed_titles):
             issues.append(
                 ValidationIssue(
                     severity="medium",
@@ -367,10 +430,20 @@ def validate_text(
     }
     for phrase in sorted(_extract_capitalized_phrases(output_text)):
         lower = phrase.lower()
-        phrase_is_grounded = lower in allowed_phrases or any(
-            lower in allowed or allowed in lower for allowed in allowed_phrases
-        )
-        if not phrase_is_grounded and lower not in COMMON_SECTION_WORDS:
+        if _looks_like_grounded_sentence_start_phrase(phrase, allowed_phrases):
+            continue
+        if _is_generic_capitalized_phrase(phrase):
+            continue
+        phrase_tokens = _meaningful_tokens(phrase)
+        if phrase_tokens and phrase_tokens <= grounded_tokens:
+            continue
+        if phrase.startswith("At ") and _entity_matches(phrase[3:], allowed_companies):
+            continue
+        if phrase.endswith(" Position") and _entity_matches(
+            phrase.removesuffix(" Position"), allowed_titles
+        ):
+            continue
+        if lower not in allowed_phrases and lower not in COMMON_SECTION_WORDS:
             issues.append(
                 ValidationIssue(
                     severity="low",
@@ -384,9 +457,14 @@ def validate_text(
     for bullet in _extract_bullets(output_text):
         similarity = _line_similarity(bullet, master_bullets)
         novel = [tok for tok in _meaningful_tokens(bullet) if tok not in grounded_tokens]
-        metrics = _extract_metric_tokens(bullet)
-        unsupported_metrics = metrics - grounded_metrics
-        if unsupported_metrics and novel:
+        bullet_metrics = _extract_metrics(bullet)
+        has_metric = bool(
+            re.search(
+                r"\b\d+(?:[%+,]|\s*(?:million|billion|k|x|years?|months?))", bullet, re.IGNORECASE
+            )
+        )
+        has_unsupported_metric = bool(bullet_metrics - grounded_metrics)
+        if has_metric and novel and has_unsupported_metric:
             issues.append(
                 ValidationIssue(
                     severity="high",

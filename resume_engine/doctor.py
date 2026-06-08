@@ -9,11 +9,9 @@ import sys
 from dataclasses import dataclass
 from typing import List
 
-import httpx
-
 from . import __version__
 from .config import get as cfg_get
-from .llm import OLLAMA_URL
+from .llm import OLLAMA_URL, httpx
 
 
 @dataclass

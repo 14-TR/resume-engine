@@ -2,12 +2,28 @@
 
 import os
 
-import httpx
+try:
+    import httpx
+except ModuleNotFoundError:  # pragma: no cover - exercised in minimal test envs
+    class _MissingHttpx:
+        HTTPError = RuntimeError
+
+        @staticmethod
+        def get(*args, **kwargs):
+            raise RuntimeError("httpx is required for network-backed LLM calls")
+
+        @staticmethod
+        def post(*args, **kwargs):
+            raise RuntimeError("httpx is required for network-backed LLM calls")
+
+    httpx = _MissingHttpx()
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
-OPENAI_MODEL = "gpt-4o-mini"
-ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_TIMEOUT_SECONDS = 120
+OLLAMA_GENERATE_TIMEOUT_SECONDS = int(
+    os.getenv("OLLAMA_GENERATE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS * 3))
+)
 
 
 def complete(prompt: str, model: str = "ollama") -> str:
@@ -31,7 +47,7 @@ def _ollama(prompt: str) -> str:
             "stream": False,
             "options": {"temperature": 0.3, "num_predict": 4000},
         },
-        timeout=120,
+        timeout=OLLAMA_GENERATE_TIMEOUT_SECONDS,
     )
     resp.raise_for_status()
     return resp.json().get("response", "").strip()
@@ -45,7 +61,7 @@ def _openai(prompt: str) -> str:
         "https://api.openai.com/v1/chat/completions",
         headers={"Authorization": f"Bearer {api_key}"},
         json={
-            "model": OPENAI_MODEL,
+            "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.3,
             "max_tokens": 4000,
@@ -64,7 +80,7 @@ def _anthropic(prompt: str) -> str:
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
         json={
-            "model": ANTHROPIC_MODEL,
+            "model": "claude-sonnet-4-20250514",
             "max_tokens": 4000,
             "messages": [{"role": "user", "content": prompt}],
         },
