@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import List
 
 from .config import get as cfg_get
 from .llm import OLLAMA_URL, httpx
+from . import __version__
 
 
 @dataclass
@@ -21,6 +24,17 @@ class DiagnosticResult:
 
 
 VALID_MODELS = {"ollama", "openai", "anthropic"}
+
+
+def _executable_version(executable: str) -> str:
+    """Return the installed CLI version string, if available."""
+    result = subprocess.run(
+        [executable, "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return (result.stdout or result.stderr).strip()
 
 
 def _check_python() -> DiagnosticResult:
@@ -96,6 +110,33 @@ def _check_pandoc() -> DiagnosticResult:
         "Pandoc",
         "warn",
         "pandoc is not installed. Markdown workflows still work, but PDF export will be unavailable.",
+    )
+
+
+def _check_cli_install() -> DiagnosticResult:
+    executable = shutil.which("resume-engine")
+    imported_version = os.environ.get("RESUME_ENGINE_VERSION", __version__)
+    if not executable:
+        return DiagnosticResult(
+            "CLI install",
+            "warn",
+            f"Imported resume-engine {imported_version}, but `resume-engine` is not on PATH.",
+        )
+
+    reported = _executable_version(executable)
+    match = re.search(r"(\d+\.\d+\.\d+)", reported)
+    reported_version = match.group(1) if match else None
+    if reported_version == imported_version:
+        return DiagnosticResult(
+            "CLI install",
+            "pass",
+            f"resume-engine {imported_version} executable found at {executable}.",
+        )
+
+    return DiagnosticResult(
+        "CLI install",
+        "warn",
+        f"Imported resume-engine {imported_version}, but {executable} reports '{reported}'.",
     )
 
 
