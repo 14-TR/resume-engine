@@ -38,9 +38,7 @@ def _print_dashboard_json(payload: dict) -> None:
     console.print_json(json.dumps(payload))
 
 
-def _validation_risk_level(
-    lowest_trust_score: int | None, high_severity_count: int, issue_count: int
-) -> str:
+def _validation_risk_level(lowest_trust_score: int | None, high_severity_count: int, issue_count: int) -> str:
     """Summarize grounded validation risk for automation gates."""
     if high_severity_count > 0 or (lowest_trust_score is not None and lowest_trust_score < 65):
         return "high"

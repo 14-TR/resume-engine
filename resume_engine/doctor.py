@@ -5,12 +5,10 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
 import sys
 from dataclasses import dataclass
 from typing import List
 
-from . import __version__
 from .config import get as cfg_get
 from .llm import OLLAMA_URL, httpx
 
