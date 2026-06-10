@@ -310,7 +310,9 @@ def _extract_metrics(text: str) -> set[str]:
         r"\b\d+(?:\.\d+)?\s+to\s+\d+(?:\.\d+)?%\b",
     ]
     for pattern in patterns:
-        metrics.update(match.group(0).strip() for match in re.finditer(pattern, text, re.IGNORECASE))
+        metrics.update(
+            match.group(0).strip() for match in re.finditer(pattern, text, re.IGNORECASE)
+        )
     return metrics
 
 
@@ -339,7 +341,11 @@ def _is_generic_capitalized_phrase(phrase: str) -> bool:
 def _entity_matches(candidate: str, allowed: set[str]) -> bool:
     normalized = _normalize_entity(candidate)
     for allowed_value in allowed:
-        if normalized == allowed_value or normalized in allowed_value or allowed_value in normalized:
+        if (
+            normalized == allowed_value
+            or normalized in allowed_value
+            or allowed_value in normalized
+        ):
             return True
     return False
 
