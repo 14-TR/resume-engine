@@ -5,6 +5,7 @@ import os
 try:
     import httpx
 except ModuleNotFoundError:  # pragma: no cover - exercised in minimal test envs
+
     class _MissingHttpx:
         HTTPError = RuntimeError
 
