@@ -800,9 +800,7 @@ class TestPackageCommand:
 
         monkeypatch.setattr(
             "resume_engine.engine.tailor_resume",
-            lambda *args, **kwargs: (_ for _ in ()).throw(
-                fake_httpx.ConnectError("connection refused")
-            ),
+            lambda *args, **kwargs: (_ for _ in ()).throw(fake_httpx.ConnectError("connection refused")),
         )
 
         result = runner.invoke(
@@ -901,9 +899,7 @@ class TestFitCommand:
 
         monkeypatch.setattr(
             "resume_engine.fit.assess_fit",
-            lambda *args, **kwargs: (_ for _ in ()).throw(
-                fake_httpx.ConnectError("connection refused")
-            ),
+            lambda *args, **kwargs: (_ for _ in ()).throw(fake_httpx.ConnectError("connection refused")),
         )
 
         result = runner.invoke(
