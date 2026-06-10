@@ -21,8 +21,8 @@ except ModuleNotFoundError:  # pragma: no cover - exercised in minimal test envs
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:14b")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
+OPENAI_MODEL = "gpt-4o-mini"
+ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 DEFAULT_TIMEOUT_SECONDS = 120
 OLLAMA_GENERATE_TIMEOUT_SECONDS = int(
     os.getenv("OLLAMA_GENERATE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS * 3))

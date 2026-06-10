@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +24,17 @@ class DiagnosticResult:
 
 
 VALID_MODELS = {"ollama", "openai", "anthropic"}
+
+
+def _executable_version(executable: str) -> str:
+    """Return the installed CLI version string, if available."""
+    result = subprocess.run(
+        [executable, "--version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return (result.stdout or result.stderr).strip()
 
 
 def _check_python() -> DiagnosticResult:
@@ -46,50 +58,6 @@ def _check_default_model() -> DiagnosticResult:
         "fail",
         f"Configured default model '{model}' is invalid. Use one of: anthropic, ollama, openai.",
         required=True,
-    )
-
-
-def _executable_version(executable: str) -> str | None:
-    try:
-        result = subprocess.run(
-            [executable, "--version"],
-            capture_output=True,
-            check=False,
-            text=True,
-            timeout=5,
-        )
-    except Exception:
-        return None
-
-    if result.returncode != 0:
-        return None
-    return result.stdout.strip()
-
-
-def _check_cli_install() -> DiagnosticResult:
-    executable = shutil.which("resume-engine")
-    if not executable:
-        return DiagnosticResult(
-            "CLI install",
-            "warn",
-            f"resume-engine {__version__} is importable, but the resume-engine executable is not on PATH.",
-        )
-
-    executable_version = _executable_version(executable)
-    if executable_version and __version__ not in executable_version:
-        return DiagnosticResult(
-            "CLI install",
-            "warn",
-            f"Imported resume-engine {__version__}, but {executable} reports '{executable_version}'.",
-        )
-
-    detail = f"resume-engine {__version__} executable found at {executable}."
-    if executable_version:
-        detail = f"{detail} Executable reports: {executable_version}."
-    return DiagnosticResult(
-        "CLI install",
-        "pass",
-        detail,
     )
 
 
@@ -145,11 +113,37 @@ def _check_pandoc() -> DiagnosticResult:
     )
 
 
+def _check_cli_install() -> DiagnosticResult:
+    executable = shutil.which("resume-engine")
+    imported_version = os.environ.get("RESUME_ENGINE_VERSION", __version__)
+    if not executable:
+        return DiagnosticResult(
+            "CLI install",
+            "warn",
+            f"Imported resume-engine {imported_version}, but `resume-engine` is not on PATH.",
+        )
+
+    reported = _executable_version(executable)
+    match = re.search(r"(\d+\.\d+\.\d+)", reported)
+    reported_version = match.group(1) if match else None
+    if reported_version == imported_version:
+        return DiagnosticResult(
+            "CLI install",
+            "pass",
+            f"resume-engine {imported_version} executable found at {executable}.",
+        )
+
+    return DiagnosticResult(
+        "CLI install",
+        "warn",
+        f"Imported resume-engine {imported_version}, but {executable} reports '{reported}'.",
+    )
+
+
 def run_diagnostics() -> List[DiagnosticResult]:
     model = cfg_get("model", "ollama")
     results = [
         _check_python(),
-        _check_cli_install(),
         _check_default_model(),
         _check_ollama(model),
         _check_api_key("openai", "OPENAI_API_KEY", model),
