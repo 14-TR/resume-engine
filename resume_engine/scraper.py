@@ -2,6 +2,7 @@
 
 import re
 
+
 def _httpx_get(url: str, **kwargs):
     """Lazy-load httpx so importing source helpers doesn't require network deps."""
     try:
