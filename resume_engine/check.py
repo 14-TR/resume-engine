@@ -12,7 +12,9 @@ def _httpx_get(url: str, **kwargs):
     try:
         import httpx
     except ModuleNotFoundError as exc:
-        raise RuntimeError("httpx is required for network health checks; install resume-engine deps.") from exc
+        raise RuntimeError(
+            "httpx is required for network health checks; install resume-engine deps."
+        ) from exc
 
     return httpx.get(url, **kwargs)
 
