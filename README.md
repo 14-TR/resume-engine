@@ -346,12 +346,12 @@ Built-in templates:
 
 Drop custom `.md` files in `~/.resume-engine/templates/` to add your own.
 
-### check
+### doctor
 
-Verify that dependencies (pandoc, LaTeX, Ollama) are installed and working.
+Verify that dependencies and local setup are ready before tailoring or exporting.
 
 ```bash
-resume-engine check
+resume-engine doctor
 ```
 
 ## Master Resume Format

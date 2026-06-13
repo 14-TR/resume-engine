@@ -2,12 +2,22 @@
 
 import re
 
-import httpx
+
+def _httpx_get(url: str, **kwargs):
+    """Lazy-load httpx so importing source helpers doesn't require network deps."""
+    try:
+        import httpx
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "httpx is required for job URL scraping; install resume-engine deps."
+        ) from exc
+
+    return httpx.get(url, **kwargs)
 
 
 def scrape_job_posting(url: str) -> str:
     """Fetch a job posting URL and extract readable text."""
-    resp = httpx.get(
+    resp = _httpx_get(
         url,
         follow_redirects=True,
         timeout=30,

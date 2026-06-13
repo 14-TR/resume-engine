@@ -20,7 +20,7 @@ class TestCheckOllama:
         mock_resp.json.return_value = {"models": [{"name": "qwen2.5:14b"}, {"name": "llama3.2:3b"}]}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("httpx.get", return_value=mock_resp):
+        with patch("resume_engine.check._httpx_get", return_value=mock_resp):
             result = check_ollama()
 
         assert result["ok"] is True
@@ -28,9 +28,9 @@ class TestCheckOllama:
         assert "llama3.2:3b" in result["models"]
 
     def test_fail_when_unreachable(self):
-        import httpx
-
-        with patch("httpx.get", side_effect=httpx.ConnectError("connection refused")):
+        with patch(
+            "resume_engine.check._httpx_get", side_effect=RuntimeError("connection refused")
+        ):
             result = check_ollama()
 
         assert result["ok"] is False
@@ -41,7 +41,7 @@ class TestCheckOllama:
         mock_resp.json.return_value = {"models": []}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("httpx.get", return_value=mock_resp):
+        with patch("resume_engine.check._httpx_get", return_value=mock_resp):
             result = check_ollama()
 
         assert result["ok"] is True
@@ -53,7 +53,7 @@ class TestCheckOllama:
         mock_resp.json.return_value = {"models": []}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("httpx.get", return_value=mock_resp) as mock_get:
+        with patch("resume_engine.check._httpx_get", return_value=mock_resp) as mock_get:
             result = check_ollama()
 
         assert "192.168.1.5" in result["url"]
@@ -161,7 +161,7 @@ class TestRunChecks:
         mock_resp.json.return_value = {"models": []}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("httpx.get", return_value=mock_resp):
+        with patch("resume_engine.check._httpx_get", return_value=mock_resp):
             with patch("shutil.which", return_value=None):
                 results = run_checks()
 
@@ -177,7 +177,7 @@ class TestRunChecks:
         mock_resp.json.return_value = {"models": [{"name": "test:latest"}]}
         mock_resp.raise_for_status = MagicMock()
 
-        with patch("httpx.get", return_value=mock_resp):
+        with patch("resume_engine.check._httpx_get", return_value=mock_resp):
             with patch("shutil.which", return_value=None):
                 results = run_checks()
 
@@ -185,7 +185,7 @@ class TestRunChecks:
             assert "detail" in r
 
     def test_failing_checks_include_hint(self):
-        with patch("httpx.get", side_effect=Exception("unreachable")):
+        with patch("resume_engine.check._httpx_get", side_effect=Exception("unreachable")):
             with patch("shutil.which", return_value=None):
                 results = run_checks()
 

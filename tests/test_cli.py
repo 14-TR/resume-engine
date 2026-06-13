@@ -1,6 +1,8 @@
 """Tests for CLI entry points (no LLM calls)."""
 
 import json
+import os
+import site
 import subprocess
 import sys
 from pathlib import Path
@@ -100,6 +102,100 @@ class TestCLIHelp:
         assert result.exit_code == 0
         assert "--format" in result.output
         assert "--output" in result.output
+
+    def test_tailor_job_url_missing_httpx_exits_cleanly_without_traceback(self, tmp_path):
+        shim_dir = tmp_path / "shim"
+        shim_dir.mkdir()
+        (shim_dir / "sitecustomize.py").write_text(
+            "import importlib.abc\n"
+            "import site\n"
+            "import sys\n"
+            "\n"
+            "class _BlockHttpx(importlib.abc.MetaPathFinder):\n"
+            "    def find_spec(self, fullname, path=None, target=None):\n"
+            "        if fullname == 'httpx' or fullname.startswith('httpx.'):\n"
+            "            raise ModuleNotFoundError(\"No module named 'httpx'\")\n"
+            "        return None\n"
+            "\n"
+            "sys.meta_path.insert(0, _BlockHttpx())\n"
+            "for package_dir in site.getsitepackages():\n"
+            "    if package_dir not in sys.path:\n"
+            "        sys.path.append(package_dir)\n",
+            encoding="utf-8",
+        )
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = os.pathsep.join([str(shim_dir), *site.getsitepackages()])
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "resume_engine.cli",
+                "tailor",
+                "--master",
+                "examples/master-resume.md",
+                "--job-url",
+                "https://example.com",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        assert result.returncode != 0
+        assert "Error: httpx is required for job URL scraping; install resume-engine deps." in (
+            result.stderr
+        )
+        assert "Traceback" not in result.stderr
+
+    def test_tailor_linkedin_url_missing_httpx_exits_cleanly_without_traceback(self, tmp_path):
+        shim_dir = tmp_path / "shim"
+        shim_dir.mkdir()
+        (shim_dir / "sitecustomize.py").write_text(
+            "import importlib.abc\n"
+            "import site\n"
+            "import sys\n"
+            "\n"
+            "class _BlockHttpx(importlib.abc.MetaPathFinder):\n"
+            "    def find_spec(self, fullname, path=None, target=None):\n"
+            "        if fullname == 'httpx' or fullname.startswith('httpx.'):\n"
+            "            raise ModuleNotFoundError(\"No module named 'httpx'\")\n"
+            "        return None\n"
+            "\n"
+            "sys.meta_path.insert(0, _BlockHttpx())\n"
+            "for package_dir in site.getsitepackages():\n"
+            "    if package_dir not in sys.path:\n"
+            "        sys.path.append(package_dir)\n",
+            encoding="utf-8",
+        )
+
+        env = dict(os.environ)
+        env["PYTHONPATH"] = os.pathsep.join([str(shim_dir), *site.getsitepackages()])
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "resume_engine.cli",
+                "tailor",
+                "--linkedin-url",
+                "https://www.linkedin.com/in/example",
+                "--job",
+                "examples/job-posting.txt",
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+
+        assert result.returncode != 0
+        assert "Error: httpx is required for LinkedIn URL imports; install resume-engine deps." in (
+            result.stderr
+        )
+        assert "Traceback" not in result.stderr
 
 
 class TestATSCommand:

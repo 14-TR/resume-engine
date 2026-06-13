@@ -94,28 +94,21 @@ def _invoke_with_backend_error_handling(command: str, model_name: str, fn, *args
 
 def _load_master(master: str | None, linkedin_url: str | None, linkedin_export: str | None) -> str:
     """Load master resume text from a file, LinkedIn URL, or LinkedIn export."""
-    sources = [s for s in [master, linkedin_url, linkedin_export] if s]
-    if len(sources) == 0:
-        raise click.UsageError(
-            "Provide --master, --linkedin-url, or --linkedin-export as the resume source."
-        )
-    if len(sources) > 1:
-        raise click.UsageError("Use only one of --master, --linkedin-url, or --linkedin-export.")
+    from .source import load_master_resume
 
-    if linkedin_url:
-        from .linkedin import scrape_linkedin_profile
+    return load_master_resume(
+        master,
+        linkedin_url,
+        linkedin_export,
+        status=console.print,
+    )
 
-        console.print("[dim]Fetching LinkedIn profile...[/dim]")
-        return scrape_linkedin_profile(linkedin_url)
 
-    if linkedin_export:
-        from .linkedin import parse_linkedin_export
+def _load_job(job: str | None, job_url: str | None) -> str:
+    """Load job text and surface missing optional scraper deps as CLI errors."""
+    from .source import load_job_posting
 
-        console.print("[dim]Parsing LinkedIn export...[/dim]")
-        return parse_linkedin_export(linkedin_export)
-
-    with open(master) as f:  # type: ignore[arg-type]
-        return f.read()
+    return load_job_posting(job, job_url)
 
 
 @click.group()
@@ -176,9 +169,6 @@ def tailor(
     """Tailor a resume to a specific job posting."""
     from .engine import tailor_resume
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- tailoring resume", style="blue"))
 
@@ -188,13 +178,7 @@ def tailor(
         console.print(f"[dim]Loaded master resume: {len(master_text)} chars[/dim]")
 
     # Load job posting
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Loaded job posting: {len(job_text)} chars[/dim]")
@@ -321,21 +305,12 @@ def cover(
     """Generate a cover letter for a job posting."""
     from .engine import generate_cover_letter
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- generating cover letter", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     # Interactive gap-filling
     if interactive:
@@ -463,16 +438,7 @@ def package(
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
-
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
+    job_text = _load_job(job, job_url)
 
     from .engine import generate_cover_letter, tailor_resume
     from .fit import assess_fit
@@ -635,22 +601,13 @@ def ats(resume, job, job_url, tailored, top, json_output):
 
     from .ats import analyze
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- ATS keyword analysis", style="blue"))
 
     with open(resume) as f:
         resume_text = f.read()
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     result = analyze(resume_text, job_text, top_n=top)
     score = result["score"]
@@ -1689,21 +1646,12 @@ def interview(
 
     from .interview import generate_interview_prep
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- interview prep", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Generating {count} interview questions with {model}...[/dim]")
@@ -2243,21 +2191,12 @@ def fit(master, linkedin_url, linkedin_export, job, job_url, model, brief, outpu
 
     from .fit import assess_fit
 
-    if not job and not job_url:
-        raise click.UsageError("Provide either --job or --job-url")
-
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- job fit assessment", style="blue"))
 
     master_text = _load_master(master, linkedin_url, linkedin_export)
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    elif job_url:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     if not json_output:
         console.print(f"[dim]Running fit analysis with {model}...[/dim]")
@@ -2438,13 +2377,7 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
     with open(master) as f:
         master_text = f.read()
 
-    if job:
-        with open(job) as f:
-            job_text = f.read()
-    else:
-        from .scraper import scrape_job_posting
-
-        job_text = scrape_job_posting(job_url)
+    job_text = _load_job(job, job_url)
 
     resume_text = None
     if resume_output:
