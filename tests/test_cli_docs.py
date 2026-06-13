@@ -132,3 +132,10 @@ def test_public_docs_do_not_include_local_user_paths():
     leaks = {path: lines for path, lines in leaks.items() if lines}
 
     assert leaks == {}
+
+
+def test_installation_guide_recommends_doctor_for_first_run():
+    docs = (REPO_ROOT / "docs/getting-started/installation.md").read_text()
+
+    assert "resume-engine doctor" in docs
+    assert "resume-engine check" not in docs

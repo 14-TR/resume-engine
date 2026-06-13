@@ -7,13 +7,21 @@ import shutil
 import subprocess
 
 
+def _httpx_get(url: str, **kwargs):
+    """Lazy-load httpx so offline/help paths still import without extra deps."""
+    try:
+        import httpx
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("httpx is required for network health checks; install resume-engine deps.") from exc
+
+    return httpx.get(url, **kwargs)
+
+
 def check_ollama() -> dict:
     """Check if Ollama is running and reachable."""
-    import httpx
-
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
     try:
-        resp = httpx.get(f"{ollama_url}/api/tags", timeout=5)
+        resp = _httpx_get(f"{ollama_url}/api/tags", timeout=5)
         resp.raise_for_status()
         data = resp.json()
         models = [m["name"] for m in data.get("models", [])]

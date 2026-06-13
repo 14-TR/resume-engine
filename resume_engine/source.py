@@ -47,7 +47,10 @@ def load_master_resume(
 
         if status:
             status("[dim]Fetching LinkedIn profile...[/dim]")
-        return scrape_linkedin_profile(linkedin_url)
+        try:
+            return scrape_linkedin_profile(linkedin_url)
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
 
     if linkedin_export:
         from .linkedin import parse_linkedin_export
@@ -70,6 +73,9 @@ def load_job_posting(job: str | None, job_url: str | None) -> str:
     if job_url:
         from .scraper import scrape_job_posting
 
-        return scrape_job_posting(job_url)
+        try:
+            return scrape_job_posting(job_url)
+        except RuntimeError as exc:
+            raise click.ClickException(str(exc)) from exc
 
     return read_text_file(job)  # type: ignore[arg-type]

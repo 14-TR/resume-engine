@@ -4,6 +4,15 @@
 
 **Goal:** Public adoption — useful to any job seeker.
 
+## June 2026 refinement focus
+
+Resume Engine is in optimization mode now.
+
+- Tighten setup, import, and validation paths before introducing more public-facing commands.
+- Favor smaller reliability fixes that reduce user confusion over broad new capability work.
+- Keep docs, CLI help, and machine-readable output aligned so automation users are not guessing.
+- Treat optional-dependency behavior and graceful failure copy as core product quality.
+
 ## Current Release Posture
 
 The original feature roadmap is complete through item 26. Resume Engine is now in maintenance and adoption mode: keep the PyPI package, docs site, and CLI behavior stable while only adding narrow improvements that reduce user setup friction or protect output trust.

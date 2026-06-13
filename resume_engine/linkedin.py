@@ -14,6 +14,18 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 
 
+def _httpx_get(url: str, **kwargs):
+    """Lazy-load httpx so LinkedIn URL support stays optional at import time."""
+    try:
+        import httpx
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "httpx is required for LinkedIn URL imports; install resume-engine deps."
+        ) from exc
+
+    return httpx.get(url, **kwargs)
+
+
 def scrape_linkedin_profile(url: str) -> str:
     """
     Attempt to scrape a LinkedIn public profile URL and return markdown.
@@ -30,8 +42,6 @@ def scrape_linkedin_profile(url: str) -> str:
     Raises:
         RuntimeError: If LinkedIn blocks the request or profile is private.
     """
-    import httpx
-
     headers = {
         "User-Agent": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -43,8 +53,10 @@ def scrape_linkedin_profile(url: str) -> str:
     }
 
     try:
-        resp = httpx.get(url, follow_redirects=True, timeout=30, headers=headers)
-    except httpx.RequestError as e:
+        resp = _httpx_get(url, follow_redirects=True, timeout=30, headers=headers)
+    except RuntimeError:
+        raise
+    except Exception as e:
         raise RuntimeError(f"Network error fetching LinkedIn profile: {e}") from e
 
     if resp.status_code == 999 or "authwall" in resp.url.path:

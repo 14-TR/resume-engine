@@ -526,6 +526,8 @@ All required checks passed. resume-engine is ready to use.
 
 Run this after installing to confirm your setup is working before processing your first resume.
 
+---
+
 ## `templates`
 
 Manage resume layout styles.

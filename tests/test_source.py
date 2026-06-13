@@ -74,6 +74,18 @@ def test_load_master_resume_from_linkedin_export(monkeypatch):
     assert load_master_resume(None, None, "linkedin.zip") == "# Export\nlinkedin.zip"
 
 
+def test_load_master_resume_missing_httpx_raises_click_exception(monkeypatch):
+    monkeypatch.setattr(
+        "resume_engine.linkedin.scrape_linkedin_profile",
+        lambda url: (_ for _ in ()).throw(
+            RuntimeError("httpx is required for LinkedIn URL imports; install resume-engine deps.")
+        ),
+    )
+
+    with pytest.raises(click.ClickException, match="httpx is required for LinkedIn URL imports"):
+        load_master_resume(None, "https://www.linkedin.com/in/jane", None)
+
+
 @pytest.mark.parametrize(
     ("master", "linkedin_url", "linkedin_export", "message"),
     [
@@ -102,6 +114,18 @@ def test_load_job_posting_from_url(monkeypatch):
     )
 
     assert load_job_posting(None, "https://example.com/job") == "Scraped https://example.com/job"
+
+
+def test_load_job_posting_missing_httpx_raises_click_exception(monkeypatch):
+    monkeypatch.setattr(
+        "resume_engine.scraper.scrape_job_posting",
+        lambda url: (_ for _ in ()).throw(
+            RuntimeError("httpx is required for job URL scraping; install resume-engine deps.")
+        ),
+    )
+
+    with pytest.raises(click.ClickException, match="httpx is required for job URL scraping"):
+        load_job_posting(None, "https://example.com/job")
 
 
 @pytest.mark.parametrize(

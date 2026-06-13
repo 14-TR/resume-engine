@@ -32,7 +32,7 @@ pip install -e ".[dev]"
 After installing, run the system check to confirm everything is working:
 
 ```bash
-resume-engine check
+resume-engine doctor
 ```
 
 This checks the detected CLI path and version, Ollama connectivity, pandoc availability, and any API keys you have configured. Green means go -- you are ready to tailor resumes.
