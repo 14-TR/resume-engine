@@ -97,6 +97,27 @@ class TestCLIHelp:
         assert result.exit_code == 0
         assert "--strict" in result.output
 
+    def test_check_failure_guidance_points_to_doctor(self, runner, monkeypatch):
+        monkeypatch.setattr(
+            "resume_engine.cli.run_checks",
+            lambda: [
+                {
+                    "name": "Ollama",
+                    "category": "Required backend",
+                    "ok": False,
+                    "detail": "offline",
+                    "hint": "Start Ollama",
+                }
+            ],
+            raising=False,
+        )
+
+        result = runner.invoke(main, ["check"])
+
+        assert result.exit_code == 1
+        assert "resume-engine doctor" in result.output
+        assert "resume-engine check" not in result.output
+
     def test_track_export_help(self, runner):
         result = runner.invoke(main, ["track", "export", "--help"])
         assert result.exit_code == 0

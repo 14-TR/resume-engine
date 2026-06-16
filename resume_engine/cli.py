@@ -6,6 +6,8 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
+from .check import run_checks
+
 console = Console()
 
 
@@ -903,8 +905,6 @@ def check():
     """Check that resume-engine dependencies are installed and configured."""
     from rich.table import Table
 
-    from .check import run_checks
-
     console.print(Panel("[bold]resume-engine[/bold] -- system check", style="blue"))
 
     results = run_checks()
@@ -937,7 +937,7 @@ def check():
     else:
         console.print(
             "[bold yellow]Some required checks failed.[/bold yellow] "
-            "Run [bold]resume-engine check[/bold] after fixing the issues above."
+            "Run [bold]resume-engine doctor[/bold] after fixing the issues above."
         )
         raise SystemExit(1)
 
