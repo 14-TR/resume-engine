@@ -51,6 +51,21 @@ def _validation_risk_level(
     return "low"
 
 
+def _validation_summary(report) -> dict:
+    """Build the shared validation readiness summary for JSON/reporting flows."""
+    all_issues = [issue for target in report.targets for issue in target.issues]
+    high_severity = sum(1 for issue in all_issues if issue.severity.lower() == "high")
+    lowest_trust_score = min((target.score for target in report.targets), default=None)
+    risk_level = _validation_risk_level(lowest_trust_score, high_severity, len(all_issues))
+    return {
+        "issue_count": len(all_issues),
+        "high_severity_issue_count": high_severity,
+        "lowest_trust_score": lowest_trust_score,
+        "risk_level": risk_level,
+        "status": "ready" if risk_level == "low" else "needs_review",
+    }
+
+
 def _cfg_default(key: str, fallback=None):
     """Return config default for a key, used as Click option defaults."""
     from .config import get as cfg_get
@@ -547,8 +562,29 @@ def package(
             f.writelines(md_lines)
         console.print(f"[green]Validation report written to {validation_path}[/green]")
 
+    validation_summary = _validation_summary(report) if report is not None else None
+
     if json_output:
         manifest_path = os.path.join(outdir, "package-summary.json")
+        summary = {
+            "fit_total": fit_result.total,
+            "fit_verdict": fit_result.verdict,
+            "fit_recommendation": fit_result.recommendation,
+            "includes_validation_report": report is not None,
+        }
+        if validation_summary is not None:
+            summary.update(
+                {
+                    "validation_status": validation_summary["status"],
+                    "validation_risk_level": validation_summary["risk_level"],
+                    "validation_high_severity_issue_count": validation_summary[
+                        "high_severity_issue_count"
+                    ],
+                    "validation_lowest_trust_score": validation_summary[
+                        "lowest_trust_score"
+                    ],
+                }
+            )
         payload = _dashboard_payload(
             "package",
             inputs={
@@ -562,12 +598,7 @@ def package(
                 "template": template,
                 "validate_report": validate_report,
             },
-            summary={
-                "fit_total": fit_result.total,
-                "fit_verdict": fit_result.verdict,
-                "fit_recommendation": fit_result.recommendation,
-                "includes_validation_report": report is not None,
-            },
+            summary=summary,
             artifacts={
                 "resume_markdown": resume_md,
                 "cover_letter_markdown": cover_md,
@@ -583,7 +614,12 @@ def package(
             json.dump(payload, f, indent=2)
         console.print(f"[green]Package manifest written to {manifest_path}[/green]")
 
-    console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
+    if validation_summary is not None and validation_summary["status"] != "ready":
+        console.print(
+            f"\n[bold yellow]Application package needs review in {outdir}/[/bold yellow]"
+        )
+    else:
+        console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
 
 @main.command()
@@ -2397,9 +2433,7 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
     )
 
     if json_output:
-        all_issues = [issue for target in report.targets for issue in target.issues]
-        high_severity = sum(1 for issue in all_issues if issue.severity.lower() == "high")
-        lowest_trust_score = min((target.score for target in report.targets), default=None)
+        validation_summary = _validation_summary(report)
         payload = _dashboard_payload(
             "validate",
             inputs={
@@ -2411,12 +2445,10 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
             },
             summary={
                 "target_count": len(report.targets),
-                "issue_count": len(all_issues),
-                "high_severity_issue_count": high_severity,
-                "lowest_trust_score": lowest_trust_score,
-                "risk_level": _validation_risk_level(
-                    lowest_trust_score, high_severity, len(all_issues)
-                ),
+                "issue_count": validation_summary["issue_count"],
+                "high_severity_issue_count": validation_summary["high_severity_issue_count"],
+                "lowest_trust_score": validation_summary["lowest_trust_score"],
+                "risk_level": validation_summary["risk_level"],
             },
             artifacts={
                 "markdown": output,
