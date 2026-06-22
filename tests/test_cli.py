@@ -6,6 +6,7 @@ import site
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 from click.testing import CliRunner
@@ -887,8 +888,8 @@ class TestPackageCommand:
             severity: str
             category: str
             message: str
-            evidence: str | None = None
-            suggestion: str | None = None
+            evidence: Optional[str] = None
+            suggestion: Optional[str] = None
 
         @dataclass
         class ValidationTarget:

@@ -580,9 +580,7 @@ def package(
                     "validation_high_severity_issue_count": validation_summary[
                         "high_severity_issue_count"
                     ],
-                    "validation_lowest_trust_score": validation_summary[
-                        "lowest_trust_score"
-                    ],
+                    "validation_lowest_trust_score": validation_summary["lowest_trust_score"],
                 }
             )
         payload = _dashboard_payload(
@@ -615,9 +613,7 @@ def package(
         console.print(f"[green]Package manifest written to {manifest_path}[/green]")
 
     if validation_summary is not None and validation_summary["status"] != "ready":
-        console.print(
-            f"\n[bold yellow]Application package needs review in {outdir}/[/bold yellow]"
-        )
+        console.print(f"\n[bold yellow]Application package needs review in {outdir}/[/bold yellow]")
     else:
         console.print(f"\n[bold green]Application package ready in {outdir}/[/bold green]")
 
