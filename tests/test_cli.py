@@ -6,6 +6,7 @@ import site
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pytest
 from click.testing import CliRunner
@@ -837,6 +838,128 @@ class TestPackageCommand:
         assert "# Validation Report" in report_text
         assert "## Resume" in report_text
         assert "## Cover-Letter" in report_text
+
+    def test_package_json_manifest_includes_validation_readiness_fields(
+        self, runner, tmp_path, monkeypatch
+    ):
+        import sys
+        import types
+        from dataclasses import dataclass, field
+
+        master_file = tmp_path / "master.md"
+        master_file.write_text("# Jane Doe\n\n## Experience\n- Built Python APIs for Acme Corp.\n")
+        job_file = tmp_path / "job.txt"
+        job_file.write_text("Acme Corp needs a Python engineer who can ship APIs.")
+        outdir = tmp_path / "application"
+
+        monkeypatch.setattr(
+            "resume_engine.engine.tailor_resume",
+            lambda master_text, job_text, model, template=None: (
+                "# Tailored Resume\n\n- Built Python APIs for Acme Corp.\n"
+            ),
+        )
+        monkeypatch.setattr(
+            "resume_engine.engine.generate_cover_letter",
+            lambda master_text, job_text, model, template=None: (
+                "Dear Acme Corp,\n\nI build Python APIs.\n"
+            ),
+        )
+
+        @dataclass
+        class FitDimension:
+            name: str
+            score: int
+            max_score: int
+            notes: list[str] = field(default_factory=list)
+
+        @dataclass
+        class FitResult:
+            total: int
+            dimensions: list[FitDimension]
+            verdict: str
+            recommendation: str
+            strengths: list[str]
+            gaps: list[str]
+            raw_analysis: str
+            ats_score: int
+
+        @dataclass
+        class ValidationIssue:
+            severity: str
+            category: str
+            message: str
+            evidence: Optional[str] = None
+            suggestion: Optional[str] = None
+
+        @dataclass
+        class ValidationTarget:
+            label: str
+            score: int
+            issues: list[ValidationIssue] = field(default_factory=list)
+
+        @dataclass
+        class ValidationReport:
+            targets: list[ValidationTarget]
+
+        fit_stub = types.ModuleType("resume_engine.fit")
+        fit_stub.assess_fit = lambda resume_text, job_text, model="ollama", ats_top_n=30: FitResult(
+            total=88,
+            dimensions=[],
+            verdict="Strong fit",
+            recommendation="Apply",
+            strengths=[],
+            gaps=[],
+            raw_analysis="",
+            ats_score=90,
+        )
+        monkeypatch.setitem(sys.modules, "resume_engine.fit", fit_stub)
+        monkeypatch.setattr(
+            "resume_engine.validate.validate_outputs",
+            lambda **kwargs: ValidationReport(
+                targets=[
+                    ValidationTarget(
+                        label="resume",
+                        score=62,
+                        issues=[
+                            ValidationIssue(
+                                severity="high",
+                                category="accuracy",
+                                message="Claim needs proof.",
+                                evidence="Led a 10x growth claim",
+                                suggestion="Add a sourced metric.",
+                            )
+                        ],
+                    ),
+                    ValidationTarget(label="cover-letter", score=91, issues=[]),
+                ]
+            ),
+            raising=False,
+        )
+
+        result = runner.invoke(
+            main,
+            [
+                "package",
+                "--master",
+                str(master_file),
+                "--job",
+                str(job_file),
+                "--outdir",
+                str(outdir),
+                "--validate-report",
+                "--json",
+            ],
+        )
+
+        assert result.exit_code == 0
+        manifest_path = outdir / "package-summary.json"
+        payload = json.loads(manifest_path.read_text())
+        assert payload["summary"]["validation_status"] == "needs_review"
+        assert payload["summary"]["validation_risk_level"] == "high"
+        assert payload["summary"]["validation_high_severity_issue_count"] == 1
+        assert payload["summary"]["validation_lowest_trust_score"] == 62
+        assert "Application package needs review" in result.output
+        assert "Application package ready" not in result.output
 
     def test_package_skips_validation_report_by_default(self, runner, tmp_path, monkeypatch):
         import sys
