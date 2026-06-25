@@ -169,6 +169,12 @@ DISCOURSE_WORDS = {
     "understanding",
     "with",
 }
+GENERIC_CAPITALIZED_TOKENS = {
+    "api",
+    "apis",
+    "rest",
+    "restful",
+}
 
 
 @dataclass
@@ -335,7 +341,17 @@ def _looks_like_grounded_sentence_start_phrase(phrase: str, allowed_phrases: set
 
 def _is_generic_capitalized_phrase(phrase: str) -> bool:
     normalized = phrase.lower().strip()
-    return normalized in DISCOURSE_WORDS or normalized in COMMON_SECTION_WORDS
+    if normalized in DISCOURSE_WORDS or normalized in COMMON_SECTION_WORDS:
+        return True
+    tokens = _meaningful_tokens(phrase)
+    return bool(tokens) and tokens <= GENERIC_CAPITALIZED_TOKENS
+
+
+def _is_generic_skill_context(skill: str, text: str) -> bool:
+    normalized_skill = skill.lower().strip()
+    if normalized_skill != "rest":
+        return False
+    return bool(re.search(r"\bREST(?:ful)?\s+API(?:s)?\b", text, re.IGNORECASE))
 
 
 def _entity_matches(candidate: str, allowed: set[str]) -> bool:
@@ -494,6 +510,8 @@ def validate_text(
     output_skills = _extract_skill_mentions(output_text)
     allowed_skills = _extract_skill_mentions(master_text) | _extract_skill_mentions(job_text)
     for skill in sorted(output_skills - allowed_skills):
+        if _is_generic_skill_context(skill, output_text):
+            continue
         issues.append(
             ValidationIssue(
                 severity="medium",

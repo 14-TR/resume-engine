@@ -99,6 +99,44 @@ def test_validate_text_keeps_grounded_metrics_and_sentence_start_verbs_supported
     assert "unsupported claim" not in categories
 
 
+def test_validate_text_does_not_treat_generic_restful_api_phrase_as_new_proper_noun():
+    result = validate_text(
+        master_text="Built backend services.\n",
+        job_text="Need someone who can ship APIs.\n",
+        output_text="- Built RESTful APIs for internal platforms.\n",
+        label="resume",
+    )
+    evidence = {issue.evidence for issue in result.issues}
+    assert "RESTful APIs" not in evidence
+
+
+def test_validate_text_does_not_treat_generic_rest_api_phrases_as_unsupported_skills():
+    for phrase in ("REST APIs", "RESTful APIs"):
+        result = validate_text(
+            master_text="Built backend services.\n",
+            job_text="Need someone who can ship APIs.\n",
+            output_text=f"- Built {phrase} for internal platforms.\n",
+            label="resume",
+        )
+        unsupported_skills = {
+            issue.evidence for issue in result.issues if issue.category == "unsupported skill"
+        }
+        assert "rest" not in unsupported_skills
+
+
+def test_validate_text_still_flags_concrete_api_technologies_as_unsupported_skills():
+    result = validate_text(
+        master_text="Built backend services.\n",
+        job_text="Need someone who can ship APIs.\n",
+        output_text="- Built GraphQL APIs for internal platforms.\n",
+        label="resume",
+    )
+    unsupported_skills = {
+        issue.evidence for issue in result.issues if issue.category == "unsupported skill"
+    }
+    assert "graphql" in unsupported_skills
+
+
 def test_validate_text_keeps_grounded_cover_letter_companies_titles_and_metrics_supported():
     examples_dir = Path(__file__).resolve().parents[1] / "examples"
     result = validate_text(
