@@ -779,6 +779,7 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
     from rich.panel import Panel
 
     from .batch import load_jobs_from_dir, load_jobs_from_manifest, print_summary, run_batch
+    from .source import read_text_file
 
     if not jobs_dir and not manifest:
         raise click.UsageError("Provide either --jobs-dir or --manifest")
@@ -788,8 +789,7 @@ def batch(master, jobs_dir, manifest, outdir, model, fmt, template, with_cover, 
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- batch mode", style="blue"))
 
-    with open(master) as f:
-        master_text = f.read()
+    master_text = read_text_file(master)
     if not json_output:
         console.print(f"[dim]Master resume: {len(master_text)} chars[/dim]")
 
@@ -901,23 +901,17 @@ def import_resume(text_file, output, model, from_stdin):
       # From stdin (paste directly)
       pbpaste | resume-engine import --stdin --output master-resume.md --model openai
     """
-    import sys
-
     from .importer import text_to_master_resume
+    from .source import load_raw_resume_text
 
-    if not text_file and not from_stdin:
-        raise click.UsageError("Provide --text <file> or --stdin to read from stdin")
-    if text_file and from_stdin:
-        raise click.UsageError("Use --text OR --stdin, not both")
+    raw_text = load_raw_resume_text(text_file, from_stdin)
 
     console.print(Panel("[bold]resume-engine[/bold] -- importing resume", style="blue"))
 
     if from_stdin:
         console.print("[dim]Reading from stdin...[/dim]")
-        raw_text = sys.stdin.read()
     else:
-        with open(text_file) as f:
-            raw_text = f.read()
+        console.print(f"[dim]Reading {text_file}...[/dim]")
 
     console.print(f"[dim]Input: {len(raw_text)} chars -- converting to master resume...[/dim]")
 
@@ -2396,6 +2390,7 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
 
     from rich.table import Table
 
+    from .source import read_text_file
     from .validate import validate_outputs
 
     if not job and not job_url:
@@ -2406,20 +2401,17 @@ def validate_cmd(master, job, job_url, resume_output, cover_letter, output, json
     if not json_output:
         console.print(Panel("[bold]resume-engine[/bold] -- grounded validation", style="blue"))
 
-    with open(master) as f:
-        master_text = f.read()
+    master_text = read_text_file(master)
 
     job_text = _load_job(job, job_url)
 
     resume_text = None
     if resume_output:
-        with open(resume_output) as f:
-            resume_text = f.read()
+        resume_text = read_text_file(resume_output)
 
     cover_text = None
     if cover_letter:
-        with open(cover_letter) as f:
-            cover_text = f.read()
+        cover_text = read_text_file(cover_letter)
 
     report = validate_outputs(
         master_text=master_text,
