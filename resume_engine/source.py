@@ -11,7 +11,17 @@ import click
 
 def read_text_file(path: str | Path) -> str:
     """Read user-provided text files with a consistent encoding."""
-    return Path(path).read_text(encoding="utf-8")
+    source_path = Path(path)
+    try:
+        return source_path.read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise click.ClickException(f"Input file not found: {source_path}") from exc
+    except IsADirectoryError as exc:
+        raise click.ClickException(f"Input path is a directory, not a file: {source_path}") from exc
+    except UnicodeDecodeError as exc:
+        raise click.ClickException(f"Input file must be valid UTF-8 text: {source_path}") from exc
+    except OSError as exc:
+        raise click.ClickException(f"Could not read input file {source_path}: {exc}") from exc
 
 
 def load_raw_resume_text(text_file: str | None, from_stdin: bool) -> str:
