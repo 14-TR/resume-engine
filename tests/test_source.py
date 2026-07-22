@@ -22,6 +22,26 @@ def test_read_text_file_uses_utf8(tmp_path):
     assert read_text_file(path) == "Jose\nGIS analyst"
 
 
+def test_read_text_file_missing_path_raises_click_exception(tmp_path):
+    path = tmp_path / "missing.txt"
+
+    with pytest.raises(click.ClickException, match="Input file not found"):
+        read_text_file(path)
+
+
+def test_read_text_file_directory_raises_click_exception(tmp_path):
+    with pytest.raises(click.ClickException, match="Input path is a directory"):
+        read_text_file(tmp_path)
+
+
+def test_read_text_file_non_utf8_raises_click_exception(tmp_path):
+    path = tmp_path / "resume.txt"
+    path.write_bytes(b"\xff\xfe\x00")
+
+    with pytest.raises(click.ClickException, match="Input file must be valid UTF-8 text"):
+        read_text_file(path)
+
+
 def test_load_raw_resume_text_from_file(tmp_path):
     path = tmp_path / "raw.txt"
     path.write_text("Jane Doe\nPython", encoding="utf-8")
